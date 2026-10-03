@@ -29,9 +29,11 @@ The current route-tracking and passport experience uses these backend calls:
 | `POST /api/users?name=Guest` | Creates a guest user when the browser has no usable stored user ID. |
 | `GET /api/passports/{userId}` | Loads or creates that user's passport and returns its stamps and travel totals. |
 | `GET /api/vehicles/live?origin={origin}&destination={destination}` | Fetches live buses whose route serves the entered origin and destination. The tracker polls this endpoint while open. |
+| `POST /api/passports/{userId}/journeys` | Records a completed route once, including its route key, endpoint Ember IDs/names, and towns found along the route. The backend estimates distance from endpoint coordinates when Ember provides them; route and town totals are still recorded if coordinates are unavailable. |
+| `POST /api/passports/{userId}/towns/visits` | Records a town-level stamp, reusing the same normalized town identity across different journeys. |
 | `POST /api/passports/{userId}/locations/{emberLocationId}/visits` | Records a stop visit and returns the stamp's name, tier, visit count, and visit timestamps. The request body may include `locationName`. |
 
-The browser keeps the guest user ID and name in `localStorage`. When a ride ends, the tracker queues the origin, destination, and detected passed stops. The user chooses **Add stamps to passport** to submit those queued locations through the visit endpoint.
+The browser keeps the guest user ID and name in `localStorage`. When a ride ends, the tracker queues the origin, destination, and detected passed stops. The user chooses **Add stamps to passport** to submit the completed route and queued locations.
 
 ## Other backend endpoints
 
@@ -45,9 +47,9 @@ These endpoints are available in the backend but are not part of the current fro
 ## Main architectural decisions
 
 - **Layered backend responsibilities:** controllers map HTTP requests and responses, services own business logic, and repositories handle persistence. This keeps API concerns separate from stamp and passport rules.
-- **One passport stamp per location:** a passport stamp is uniquely associated with a passport and a stamp/location. Recording another visit updates its visit count, tier, and most recent visit rather than creating a duplicate passport entry.
+- **Separate town and bus-stop stamp identities:** city stamps use normalized town keys (for example, `town:aberdeen`) so Aberdeen is one passport stamp across different routes; individual stop stamps retain their Ember location IDs. Visiting the same town again updates the existing stamp's visit count and tier.
 - **Defer stamp submission until the ride ends:** the live tracker identifies passed stops from the selected bus's successive live route positions and holds them in a client-side queue. The user explicitly confirms with **Add stamps to passport** before visits are persisted. The client deduplicates queued locations, while the backend's passport/location uniqueness also protects the persisted collection.
+- **Persist route statistics idempotently:** each completed ride is stored once per passport using a client-generated journey key. Distance uses the straight-line Haversine estimate between the Ember origin and destination coordinates because the live feed does not provide journey distance. If coordinates are unavailable, the route and town totals are saved and the passport marks distance unavailable instead of failing stamp submission or inventing a value. Towns are counted distinctly from the route's region names plus its entered endpoints.
 - **Use Ember's route stop IDs as stamp identities:** each stamp is associated with the Ember location ID. The entered origin and destination are matched to stops on the bus route, and their entered names are sent as display names.
 - **Keep tier visuals in the frontend:** the passport API returns the stamp tier as data; the React `Stamp` component selects the matching default, bronze, silver, or gold image asset. This keeps presentation independent of backend persistence.
 - **Keep journey polling in the route-tracker component:** live bus positions are polled by `LiveBusTracker`; its cursor compares current and next stops between polls, allowing it to detect stops passed even when the feed advances by more than one stop.
-

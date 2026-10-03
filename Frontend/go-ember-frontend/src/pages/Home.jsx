@@ -37,7 +37,7 @@ function Home() {
 
     const passport = passportData?.passport;
     const stamps = (passport?.stamps ?? []).map(stamp => ({
-        id: stamp.locationId,
+        id: stamp.stampKey ?? stamp.locationId,
         stopName: stamp.stampName,
         timesCollected: stamp.visitCount,
         lastCollected: stamp.mostRecentVisitAt,
@@ -60,8 +60,8 @@ function Home() {
                     <Passport
                         username={passportData.username}
                         stamps={stamps}
-                        routesTravelled={0}
-                        townsVisited={0}
+                        routesTravelled={passport.routesTravelled ?? 0}
+                        townsVisited={passport.townsVisited ?? 0}
                         distanceTravelledKm={passport.totalDistanceTravelled}
                     />
                 </>

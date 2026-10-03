@@ -2,6 +2,7 @@ package com.goember.hackathon.stamp;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Locale;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +36,14 @@ public class StampService {
 					}
 					return createFromEmberLocation(emberLocationId);
 				});
+	}
+
+	@Transactional
+	public Stamp getOrCreateForTown(String townName) {
+		String normalizedTown = townName.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+		String stampKey = "town:" + normalizedTown;
+		return stampRepository.findByStampKey(stampKey)
+				.orElseGet(() -> stampRepository.save(new Stamp(stampKey, townName.trim())));
 	}
 
 	private Stamp createFromEmberLocation(long emberLocationId) {

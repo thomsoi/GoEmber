@@ -76,8 +76,12 @@ function Passport({
                                     <dd>{formatCount(townsVisited)}</dd>
                                 </div>
                                 <div className="passport-stat">
-                                    <dt>Distance travelled</dt>
-                                    <dd>{formatCount(distanceTravelledKm)} <span>km</span></dd>
+                                    <dt>Distance travelled (estimated)</dt>
+                                    <dd>
+                                        {Number.isFinite(distanceTravelledKm)
+                                            ? <>{formatCount(distanceTravelledKm)} <span>km</span></>
+                                            : 'Unavailable'}
+                                    </dd>
                                 </div>
                             </dl>
                         </article>

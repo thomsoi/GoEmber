@@ -14,9 +14,13 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.goember.hackathon.stamp.PassportStamp;
 import com.goember.hackathon.stamp.Stamp;
-import com.goember.hackathon.stamp.StampTier;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 
 @RestController
 @RequestMapping("/api/passports")
@@ -37,6 +41,20 @@ public class PassportController {
 		}
 	}
 
+	@PostMapping("/{userId}/journeys")
+	public void recordCompletedJourney(
+			@PathVariable Long userId,
+			@Valid @RequestBody CompletedJourneyRequest request) {
+		passportService.recordCompletedJourney(
+				userId,
+				request.journeyKey(),
+				request.originLocationId(),
+				request.destinationLocationId(),
+				request.originName(),
+				request.destinationName(),
+				request.towns());
+	}
+
 	@PostMapping("/{userId}/locations/{emberLocationId}/visits")
 	public StampVisitResponse recordLocationVisit(
 			@PathVariable Long userId,
@@ -48,6 +66,7 @@ public class PassportController {
 			Stamp stamp = passportStamp.getStamp();
 			return new StampVisitResponse(
 					stamp.getLocationId(),
+					stamp.getStampKey(),
 					stamp.getName(),
 					passportStamp.getTier().getValue(),
 					passportStamp.getVisitCount(),
@@ -60,29 +79,59 @@ public class PassportController {
 		}
 	}
 
+	@PostMapping("/{userId}/towns/visits")
+	public StampVisitResponse recordTownVisit(
+			@PathVariable Long userId,
+			@Valid @RequestBody TownVisitRequest request) {
+		PassportStamp passportStamp = passportService.recordTownVisit(userId, request.townName());
+		Stamp stamp = passportStamp.getStamp();
+		return new StampVisitResponse(
+				stamp.getLocationId(),
+				stamp.getStampKey(),
+				stamp.getName(),
+				passportStamp.getTier().getValue(),
+				passportStamp.getVisitCount(),
+				passportService.percentOfUsersWithStampKey(stamp.getStampKey()),
+				passportStamp.getVisitCount() > 1,
+				passportStamp.getFirstVisitedAt(),
+				passportStamp.getMostRecentVisitAt());
+	}
+
 	private PassportResponse toPassportResponse(Passport passport) {
 		List<PassportStampResponse> stamps = passport.getStamps().stream()
 				.map(passportStamp -> new PassportStampResponse(
 						passportStamp.getStamp().getLocationId(),
+						passportStamp.getStamp().getStampKey(),
 						passportStamp.getStamp().getName(),
 						passportStamp.getTier().getValue(),
 						passportStamp.getVisitCount(),
-						passportService.percentOfUsersWithStamp(passportStamp.getStamp().getLocationId()),
+						passportStamp.getStamp().getLocationId() == null
+								? passportService.percentOfUsersWithStampKey(passportStamp.getStamp().getStampKey())
+								: passportService.percentOfUsersWithStamp(passportStamp.getStamp().getLocationId()),
 						passportStamp.getFirstVisitedAt(),
 						passportStamp.getMostRecentVisitAt()))
 				.toList();
 
-		return new PassportResponse(passport.getPassportId(), passport.getTotalDistance(), stamps);
+		PassportService.TravelStats travelStats = passportService.getTravelStats(passport.getPassportId());
+		return new PassportResponse(
+				passport.getPassportId(),
+				travelStats.totalDistanceKilometers(),
+				travelStats.routesTravelled(),
+				travelStats.townsVisited(),
+				stamps);
 	}
 
 	public record PassportResponse(
 			Long passportId,
-			float totalDistanceTravelled,
+			Double totalDistanceTravelled,
+			long routesTravelled,
+			long townsVisited,
 			List<PassportStampResponse> stamps) {
 	}
 
 	public record PassportStampResponse(
 			Long locationId,
+			String stampKey,
 			String stampName,
 			String tier,
 			int visitCount,
@@ -93,6 +142,7 @@ public class PassportController {
 
 	public record StampVisitResponse(
 			Long locationId,
+			String stampKey,
 			String stampName,
 			String tier,
 			int visitCount,
@@ -103,5 +153,17 @@ public class PassportController {
 	}
 
 	public record LocationVisitRequest(String locationName) {
+	}
+
+	public record TownVisitRequest(@NotBlank String townName) {
+	}
+
+	public record CompletedJourneyRequest(
+			@NotBlank String journeyKey,
+			@NotNull @Positive Long originLocationId,
+			@NotNull @Positive Long destinationLocationId,
+			@NotBlank String originName,
+			@NotBlank String destinationName,
+			@NotEmpty List<@NotBlank String> towns) {
 	}
 }

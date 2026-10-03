@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { ensureCurrentPassport, getLiveBuses, recordLocationVisit } from '../services/BackendAPI';
+import {
+    ensureCurrentPassport,
+    getLiveBuses,
+    recordCompletedJourney,
+    recordLocationVisit,
+    recordTownVisit,
+} from '../services/BackendAPI';
 import '../css/LiveBusTracker.css';
 
 const POLL_INTERVAL_MS = 15000;
@@ -27,12 +33,36 @@ function findJourneyEndpointStops(route, origin, destination) {
         (stop, index) => index > originIndex && matchesLocation(stop, destination),
     );
 
-    if (originIndex < 0 || destinationIndex < 0) return [];
+    if (originIndex < 0 || destinationIndex < 0) {
+        return { endpointStops: [], towns: [] };
+    }
 
-    return [
-        { ...route[originIndex], name: origin.trim() },
-        { ...route[destinationIndex], name: destination.trim() },
-    ];
+    const routeStops = route.slice(originIndex, destinationIndex + 1);
+    const towns = new Set([origin.trim().toLowerCase(), destination.trim().toLowerCase()]);
+    routeStops.forEach(stop => {
+        const town = stop.regionName?.trim();
+        if (town) towns.add(town.toLowerCase());
+    });
+
+    return {
+        endpointStops: [
+            { ...route[originIndex], name: origin.trim() },
+            { ...route[destinationIndex], name: destination.trim() },
+        ],
+        towns: [...towns],
+    };
+}
+
+function uniqueTownNames(towns) {
+    const uniqueTowns = new Map();
+    towns.forEach(town => {
+        const trimmedTown = town.trim();
+        const normalizedTown = trimmedTown.toLowerCase();
+        if (trimmedTown && !uniqueTowns.has(normalizedTown)) {
+            uniqueTowns.set(normalizedTown, trimmedTown);
+        }
+    });
+    return [...uniqueTowns.values()];
 }
 
 function LiveBusTracker({ origin, destination, onSelectedBusChange }) {
@@ -42,6 +72,7 @@ function LiveBusTracker({ origin, destination, onSelectedBusChange }) {
     const [feedback, setFeedback] = useState(null);
     const [isTracking, setIsTracking] = useState(false);
     const [pendingStops, setPendingStops] = useState([]);
+    const [pendingJourneys, setPendingJourneys] = useState([]);
     const [isAddingStamps, setIsAddingStamps] = useState(false);
     const selectedVehicleIdRef = useRef('');
     const trackingCursorRef = useRef(null);
@@ -82,6 +113,7 @@ function LiveBusTracker({ origin, destination, onSelectedBusChange }) {
                         processedStopIds: new Set(),
                         journeyId: cursor?.journeyId ?? ++journeyCounterRef.current,
                         endpointStops: cursor?.endpointStops ?? [],
+                        journey: cursor?.journey ?? null,
                     };
                     if (isTrackingRef.current) {
                         setFeedback({
@@ -115,6 +147,7 @@ function LiveBusTracker({ origin, destination, onSelectedBusChange }) {
                         processedStopIds: cursor.processedStopIds,
                         journeyId: cursor.journeyId,
                         endpointStops: cursor.endpointStops,
+                        journey: cursor.journey,
                     };
                     return;
                 }
@@ -127,6 +160,7 @@ function LiveBusTracker({ origin, destination, onSelectedBusChange }) {
                         processedStopIds: cursor.processedStopIds,
                         journeyId: cursor.journeyId,
                         endpointStops: cursor.endpointStops,
+                        journey: cursor.journey,
                     };
                     return;
                 }
@@ -156,6 +190,7 @@ function LiveBusTracker({ origin, destination, onSelectedBusChange }) {
                     processedStopIds: cursor.processedStopIds,
                     journeyId: cursor.journeyId,
                     endpointStops: cursor.endpointStops,
+                    journey: cursor.journey,
                 };
                 if (active) {
                     setFeedback({
@@ -203,22 +238,13 @@ function LiveBusTracker({ origin, destination, onSelectedBusChange }) {
             isTrackingRef.current = false;
             setIsTracking(false);
             const cursor = trackingCursorRef.current;
-            const journeyKey = `${cursor.tripKey}:${cursor.journeyId}`;
-            const endpointStops = cursor.endpointStops ?? [];
-            setPendingStops(pending => {
-                const queuedLocationIds = new Set(pending.map(stop => stop.locationId));
-                const newStops = endpointStops.reduce((stops, stop) => {
-                    if (queuedLocationIds.has(stop.locationId)) return stops;
-
-                    queuedLocationIds.add(stop.locationId);
-                    stops.push({
-                        ...stop,
-                        queueId: `${journeyKey}:${stop.locationId}`,
-                    });
-                    return stops;
-                }, []);
-                return [...pending, ...newStops];
-            });
+            if (cursor.journey) {
+                const { requestKey, ...journey } = cursor.journey;
+                setPendingJourneys(journeys => [
+                    ...journeys,
+                    { ...journey, journeyKey: requestKey },
+                ]);
+            }
             setFeedback({
                 type: 'status',
                 text: 'Ride ended. Add the origin, destination and passed stops to your passport when you are ready.',
@@ -227,13 +253,24 @@ function LiveBusTracker({ origin, destination, onSelectedBusChange }) {
         }
 
         const tripKey = `${selectedBus.vehicleId}:${selectedBus.tripUid}`;
+        const journeyDetails = findJourneyEndpointStops(selectedBus.route ?? [], origin, destination);
+        const requestKey = crypto.randomUUID();
         trackingCursorRef.current = {
             tripKey,
             currentStopId: selectedBus.currentStop?.locationId ?? null,
             nextStop: selectedBus.nextStop,
             processedStopIds: new Set(),
             journeyId: ++journeyCounterRef.current,
-            endpointStops: findJourneyEndpointStops(selectedBus.route ?? [], origin, destination),
+            endpointStops: journeyDetails.endpointStops,
+            journey: {
+                requestKey,
+                originLocationId: journeyDetails.endpointStops[0]?.locationId,
+                destinationLocationId: journeyDetails.endpointStops[1]?.locationId,
+                originName: origin,
+                destinationName: destination,
+                townsToStamp: uniqueTownNames([origin, destination]),
+                towns: journeyDetails.towns,
+            },
         };
         isTrackingRef.current = true;
         setIsTracking(true);
@@ -245,10 +282,11 @@ function LiveBusTracker({ origin, destination, onSelectedBusChange }) {
     }
 
     async function addStampsToPassport() {
-        if (isAddingStamps || isTracking || pendingStops.length === 0) return;
+        if (isAddingStamps || isTracking || (pendingStops.length === 0 && pendingJourneys.length === 0)) return;
 
         setIsAddingStamps(true);
         let addedCount = 0;
+        let recordingJourneys = false;
 
         try {
             const { userId } = await ensureCurrentPassport();
@@ -262,14 +300,36 @@ function LiveBusTracker({ origin, destination, onSelectedBusChange }) {
                 addedCount++;
             }
 
+            recordingJourneys = true;
+            for (const journey of pendingJourneys) {
+                const pendingTownNames = journey.townsToStamp ?? [];
+                for (const townName of pendingTownNames) {
+                    await recordTownVisit(userId, townName);
+                    setPendingJourneys(current => current.map(item => (
+                        item.journeyKey === journey.journeyKey
+                            ? {
+                                ...item,
+                                townsToStamp: item.townsToStamp.filter(town => town !== townName),
+                            }
+                            : item
+                    )));
+                }
+                const { journeyKey, ...details } = journey;
+                delete details.townsToStamp;
+                await recordCompletedJourney(userId, { ...details, journeyKey });
+                setPendingJourneys(current => current.filter(item => item.journeyKey !== journeyKey));
+            }
+
             setFeedback({
                 type: 'success',
-                text: `Added stamps for ${addedCount} ${addedCount === 1 ? 'stop' : 'stops'} to your passport.`,
+                text: `Added ${addedCount} ${addedCount === 1 ? 'stop stamp' : 'stop stamps'} and ${pendingJourneys.length} ${pendingJourneys.length === 1 ? 'route' : 'routes'} to your passport.`,
             });
         } catch (error) {
             setFeedback({
                 type: 'error',
-                text: addedCount > 0
+                text: recordingJourneys
+                    ? `Stop stamps were added, but route statistics could not be saved: ${error.message || 'Please try again.'}`
+                    : addedCount > 0
                     ? `Added stamps for ${addedCount} stops, but could not add the rest: ${error.message || 'Please try again.'}`
                     : error.message || 'Could not add stamps to your passport.',
             });
@@ -318,14 +378,14 @@ function LiveBusTracker({ origin, destination, onSelectedBusChange }) {
                     {isTracking ? 'I got off this bus' : "I'm getting on this bus"}
                 </button>
             )}
-            {!isTracking && pendingStops.length > 0 && (
+            {!isTracking && (pendingStops.length > 0 || pendingJourneys.length > 0) && (
                 <button
                     className="live-bus-add-stamps-button"
                     type="button"
                     onClick={addStampsToPassport}
                     disabled={isAddingStamps}
                 >
-                    {isAddingStamps ? 'Adding stamps…' : `Add stamps to passport (${pendingStops.length})`}
+                    {isAddingStamps ? 'Adding stamps…' : `Add stamps to passport (${pendingStops.length + pendingJourneys.length})`}
                 </button>
             )}
             {feedback && (

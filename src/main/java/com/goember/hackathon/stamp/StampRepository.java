@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface StampRepository extends JpaRepository<Stamp, Long> {
 
 	Optional<Stamp> findByLocationId(Long locationId);
+
+	Optional<Stamp> findByStampKey(String stampKey);
 }

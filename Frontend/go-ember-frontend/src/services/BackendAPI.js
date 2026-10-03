@@ -77,3 +77,19 @@ export function recordLocationVisit(userId, locationId, locationName) {
         },
     );
 }
+
+export function recordTownVisit(userId, townName) {
+    return request(`/api/passports/${encodeURIComponent(userId)}/towns/visits`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ townName }),
+    });
+}
+
+export function recordCompletedJourney(userId, journey) {
+    return request(`/api/passports/${encodeURIComponent(userId)}/journeys`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(journey),
+    });
+}

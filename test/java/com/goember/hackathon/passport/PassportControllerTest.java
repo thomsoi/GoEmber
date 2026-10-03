@@ -37,12 +37,17 @@ class PassportControllerTest {
         PassportStamp passportStamp = passport.addStamp(stamp);
 
         when(passportService.getOrCreatePassport(1L)).thenReturn(passport);
+        when(passportService.getTravelStats(null))
+                .thenReturn(new PassportService.TravelStats(125.0, 2, 3));
 
         PassportController.PassportResponse response = passportController.getPassport(1L);
 
         assertNotNull(response);
         assertEquals(1, response.stamps().size());
         assertEquals("Inverkeithing", response.stamps().get(0).stampName());
+        assertEquals(125.0, response.totalDistanceTravelled());
+        assertEquals(2, response.routesTravelled());
+        assertEquals(3, response.townsVisited());
     }
 
     @Test
