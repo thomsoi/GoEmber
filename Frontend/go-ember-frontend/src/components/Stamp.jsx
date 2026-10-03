@@ -6,3 +6,5 @@ function Stamp() {
         </div>
     );
 }
+
+export default Stamp;

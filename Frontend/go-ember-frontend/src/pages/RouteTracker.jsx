@@ -6,3 +6,5 @@ function RouteTracker() {
         </div>
     );
 }
+
+export default RouteTracker;

@@ -6,3 +6,5 @@ function Passport() {
         </div>
     );
 }
+
+export default Passport;
