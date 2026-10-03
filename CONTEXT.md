@@ -400,7 +400,7 @@ ARCHITECTURE:
              │                  │
              ▼                  ▼
       ┌─────────────┐    ┌─────────────┐
-      │  Ember API  │    │  PostgreSQL │
+      │  Ember API  │    │  IN MEMORY H2 DATABASE │
       │             │    │             │
       │ Journeys    │    │ Users       │
       │ Stops       │    │ Stamps      │
