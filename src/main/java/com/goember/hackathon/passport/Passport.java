@@ -52,6 +52,10 @@ public class Passport {
         return user;
     }
 
+    public float getTotalDistance() {
+        return totalDistance;
+    }
+
     public List<PassportStamp> getStamps() {
         return stamps;
     }

@@ -54,4 +54,22 @@ public class EmberClient {
                 .bodyToMono(Map.class)
                 .block();
     }
+
+    public Optional<Map> findLocationById(long locationId) {
+        List<Map> locations = webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v1/locations/search/")
+                        .queryParam("ids", locationId)
+                        .build())
+                .retrieve()
+                .bodyToFlux(Map.class)
+                .collectList()
+                .block();
+
+        if (locations == null || locations.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(locations.get(0));
+    }
 }

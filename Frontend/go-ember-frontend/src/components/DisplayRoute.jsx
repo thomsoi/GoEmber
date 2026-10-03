@@ -36,7 +36,7 @@ function DisplayRoute({ startLocation, endLocation, departureTime, stops, onVisi
                 >
                     {nextStop ? `Mark ${nextStop.name} visited` : 'All stops visited'}
                 </button>
-        </div>
+            </div>
         </section>
     );
 }

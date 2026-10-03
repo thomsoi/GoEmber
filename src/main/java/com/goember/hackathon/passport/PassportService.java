@@ -1,15 +1,11 @@
 package com.goember.hackathon.passport;
 
-import java.util.Map;
-import java.util.Objects;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.goember.hackathon.ember.EmberClient;
 import com.goember.hackathon.stamp.PassportStamp;
 import com.goember.hackathon.stamp.Stamp;
-import com.goember.hackathon.stamp.StampRepository;
+import com.goember.hackathon.stamp.StampService;
 import com.goember.hackathon.user.User;
 import com.goember.hackathon.user.UserRepository;
 
@@ -20,18 +16,15 @@ public class PassportService {
 
 	private final PassportRepository passportRepository;
 	private final UserRepository userRepository;
-	private final StampRepository stampRepository;
-	private final EmberClient emberClient;
+	private final StampService stampService;
 
 	public PassportService(
 			PassportRepository passportRepository,
 			UserRepository userRepository,
-			StampRepository stampRepository,
-			EmberClient emberClient) {
+			StampService stampService) {
 		this.passportRepository = passportRepository;
 		this.userRepository = userRepository;
-		this.stampRepository = stampRepository;
-		this.emberClient = emberClient;
+		this.stampService = stampService;
 	}
 
 	@Transactional
@@ -41,17 +34,8 @@ public class PassportService {
 
 	@Transactional
 	public PassportStamp recordLocationVisit(Long userId, long emberLocationId) {
-		Map location = emberClient.findLocationById(emberLocationId)
-				.orElseThrow(() -> new EntityNotFoundException(
-						"Ember location not found: " + emberLocationId));
-		String locationName = Objects.toString(location.get("name"), null);
-		if (locationName == null || locationName.isBlank()) {
-			throw new IllegalStateException("Ember location has no name: " + emberLocationId);
-		}
-
 		Passport passport = findOrCreatePassport(userId);
-		Stamp stamp = stampRepository.findByLocationId(emberLocationId)
-				.orElseGet(() -> stampRepository.save(new Stamp(emberLocationId, locationName)));
+		Stamp stamp = stampService.getOrCreateForLocation(emberLocationId);
 
 		PassportStamp passportStamp = passport.getStamps().stream()
 				.filter(entry -> entry.getStamp().getLocationId().equals(emberLocationId))
