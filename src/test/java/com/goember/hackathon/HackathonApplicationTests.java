@@ -9,5 +9,4 @@ class HackathonApplicationTests {
 	@Test
 	void contextLoads() {
 	}
-
 }
