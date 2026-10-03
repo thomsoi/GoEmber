@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
@@ -39,15 +40,18 @@ public class PassportController {
 	@PostMapping("/{userId}/locations/{emberLocationId}/visits")
 	public StampVisitResponse recordLocationVisit(
 			@PathVariable Long userId,
-			@PathVariable long emberLocationId) {
+			@PathVariable long emberLocationId,
+			@RequestBody(required = false) LocationVisitRequest request) {
 		try {
-			PassportStamp passportStamp = passportService.recordLocationVisit(userId, emberLocationId);
+			String locationName = request == null ? null : request.locationName();
+			PassportStamp passportStamp = passportService.recordLocationVisit(userId, emberLocationId, locationName);
 			Stamp stamp = passportStamp.getStamp();
 			return new StampVisitResponse(
 					stamp.getLocationId(),
 					stamp.getName(),
 					passportStamp.getTier().getValue(),
 					passportStamp.getVisitCount(),
+					passportService.percentOfUsersWithStamp(stamp.getLocationId()),
 					passportStamp.getVisitCount() > 1,
 					passportStamp.getFirstVisitedAt(),
 					passportStamp.getMostRecentVisitAt());
@@ -63,6 +67,7 @@ public class PassportController {
 						passportStamp.getStamp().getName(),
 						passportStamp.getTier().getValue(),
 						passportStamp.getVisitCount(),
+						passportService.percentOfUsersWithStamp(passportStamp.getStamp().getLocationId()),
 						passportStamp.getFirstVisitedAt(),
 						passportStamp.getMostRecentVisitAt()))
 				.toList();
@@ -81,6 +86,7 @@ public class PassportController {
 			String stampName,
 			String tier,
 			int visitCount,
+			double percentOfUsersWithStamp,
 			Instant firstVisitedAt,
 			Instant mostRecentVisitAt) {
 	}
@@ -90,8 +96,12 @@ public class PassportController {
 			String stampName,
 			String tier,
 			int visitCount,
+			double percentOfUsersWithStamp,
 			boolean alreadyVisited,
 			Instant firstVisitedAt,
 			Instant mostRecentVisitAt) {
+	}
+
+	public record LocationVisitRequest(String locationName) {
 	}
 }

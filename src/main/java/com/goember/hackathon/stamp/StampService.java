@@ -23,8 +23,18 @@ public class StampService {
 
 	@Transactional
 	public Stamp getOrCreateForLocation(long emberLocationId) {
+		return getOrCreateForLocation(emberLocationId, null);
+	}
+
+	@Transactional
+	public Stamp getOrCreateForLocation(long emberLocationId, String locationName) {
 		return stampRepository.findByLocationId(emberLocationId)
-				.orElseGet(() -> createFromEmberLocation(emberLocationId));
+				.orElseGet(() -> {
+					if (locationName != null && !locationName.isBlank()) {
+						return stampRepository.save(new Stamp(emberLocationId, locationName));
+					}
+					return createFromEmberLocation(emberLocationId);
+				});
 	}
 
 	private Stamp createFromEmberLocation(long emberLocationId) {

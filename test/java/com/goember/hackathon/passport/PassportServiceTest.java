@@ -13,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.goember.hackathon.stamp.PassportStamp;
+import com.goember.hackathon.stamp.PassportStampRepository;
 import com.goember.hackathon.stamp.Stamp;
 import com.goember.hackathon.stamp.StampService;
 import com.goember.hackathon.user.User;
@@ -30,11 +31,18 @@ class PassportServiceTest {
     @Mock
     private StampService stampService;
 
+    @Mock
+    private PassportStampRepository passportStampRepository;
+
     private PassportService passportService;
 
     @BeforeEach
     void setUp() {
-        passportService = new PassportService(passportRepository, userRepository, stampService);
+        passportService = new PassportService(
+            passportRepository,
+            userRepository,
+            stampService,
+            passportStampRepository);
     }
 
     @Test
@@ -76,5 +84,15 @@ class PassportServiceTest {
         PassportStamp result = passportService.recordLocationVisit(1L, 42L);
 
         assertEquals(2, result.getVisitCount());
+    }
+
+    @Test
+    void percentOfUsersWithStamp_returnsPercentOfAllUsers() {
+        when(userRepository.count()).thenReturn(20L);
+        when(passportStampRepository.countByStamp_LocationId(42L)).thenReturn(5L);
+
+		double percentage = passportService.percentOfUsersWithStamp(42L);
+
+		assertEquals(25.0, percentage);
     }
 }

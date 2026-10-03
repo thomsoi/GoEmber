@@ -53,9 +53,12 @@ class PassportControllerTest {
         PassportStamp passportStamp = passport.addStamp(stamp);
         passportStamp.recordVisit();
 
-        when(passportService.recordLocationVisit(1L, 42L)).thenReturn(passportStamp);
+        when(passportService.recordLocationVisit(1L, 42L, "Inverkeithing")).thenReturn(passportStamp);
 
-        PassportController.StampVisitResponse response = passportController.recordLocationVisit(1L, 42L);
+        PassportController.StampVisitResponse response = passportController.recordLocationVisit(
+            1L,
+            42L,
+            new PassportController.LocationVisitRequest("Inverkeithing"));
 
         assertNotNull(response);
         assertEquals(42L, response.locationId());

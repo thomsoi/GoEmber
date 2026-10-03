@@ -66,9 +66,13 @@ export function getLiveBuses() {
     return request('/api/vehicles/live');
 }
 
-export function recordLocationVisit(userId, locationId) {
+export function recordLocationVisit(userId, locationId, locationName) {
     return request(
         `/api/passports/${encodeURIComponent(userId)}/locations/${encodeURIComponent(locationId)}/visits`,
-        { method: 'POST' },
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ locationName }),
+        },
     );
 }

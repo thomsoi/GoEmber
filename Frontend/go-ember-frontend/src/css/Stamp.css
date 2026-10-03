@@ -58,6 +58,13 @@
 	line-height: 1.2;
 }
 
+.stamp-rarity {
+	color: #287c6c;
+	font-size: 10px;
+	font-weight: 600;
+	line-height: 1.25;
+}
+
 @media (max-width: 360px) {
 	.passport-book {
 		grid-template-columns: 24px minmax(0, 1fr) 24px;

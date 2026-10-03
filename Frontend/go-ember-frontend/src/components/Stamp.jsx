@@ -10,6 +10,9 @@ function Stamp({ stamp }) {
     const formattedDate = !collectionDate || Number.isNaN(collectionDate.getTime())
         ? stamp.lastCollected
         : new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).format(collectionDate);
+    const formattedPopularity = new Intl.NumberFormat(undefined, {
+        maximumSignificantDigits: 3,
+    }).format(stamp.percentOfUsersWithStamp ?? 0);
 
     return (
         <article className={`stamp stamp--${level}`}>
@@ -17,6 +20,7 @@ function Stamp({ stamp }) {
                 <span>{level}</span>
             </div>
             <h3 className="stamp-stop-name">{stamp.stopName}</h3>
+            <p className="stamp-rarity">Collected by {formattedPopularity}% of users</p>
             <p className="stamp-collection-count">Collected {stamp.timesCollected} {stamp.timesCollected === 1 ? 'time' : 'times'}</p>
             {formattedDate && (
                 <time className="stamp-last-collected" dateTime={stamp.lastCollected}>{formattedDate}</time>

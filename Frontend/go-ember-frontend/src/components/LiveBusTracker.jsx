@@ -87,7 +87,7 @@ function LiveBusTracker() {
                 const { userId } = await ensureCurrentPassport();
 
                 for (const stop of passedStops) {
-                    const visit = await recordLocationVisit(userId, stop.locationId);
+                    const visit = await recordLocationVisit(userId, stop.locationId, stop.name);
                     trackingCursorRef.current = currentStopChanged
                         ? { tripKey, currentStopId: stop.locationId, nextStop: cursor.nextStop }
                         : { tripKey, currentStopId: cursor.currentStopId, nextStop };

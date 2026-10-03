@@ -42,6 +42,7 @@ function Home() {
         timesCollected: stamp.visitCount,
         lastCollected: stamp.mostRecentVisitAt,
         level: stamp.tier,
+        percentOfUsersWithStamp: stamp.percentOfUsersWithStamp,
     }));
 
     return (
