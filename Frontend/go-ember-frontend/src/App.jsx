@@ -1,17 +1,19 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
 import './App.css'
+import Home from './pages/Home'
+import RouteTracker from './pages/RouteTracker'
+import NavBar from './components/NavBar'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const isRouteTracker = window.location.pathname.replace(/\/+$/, '') === '/route-tracker'
 
   return (
-    <main className='main-content'>
-      <h1>Hello Go Ember!</h1>
-    </main>
+    <>
+      <main className='main-content'>
+        {isRouteTracker ? <RouteTracker /> : <Home />}
+      </main>
+      <NavBar activePage={isRouteTracker ? 'routes' : 'home'} />
+    </>
   )
 }
 
-export default App
+export default App;
