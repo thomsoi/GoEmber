@@ -1,6 +1,7 @@
 import ProgressBar from '../components/ProgressBar';
 import Passport from '../components/Passport';
 import NavBar from '../components/NavBar';
+import '../css/Home.css';
 
 function Home() {
     return (
