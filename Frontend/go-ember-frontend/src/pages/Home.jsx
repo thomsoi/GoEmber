@@ -1,6 +1,5 @@
 import ProgressBar from '../components/ProgressBar';
 import Passport from '../components/Passport';
-import NavBar from '../components/NavBar';
 import '../css/Home.css';
 
 function Home() {
@@ -8,7 +7,6 @@ function Home() {
         <div className="home">
             <ProgressBar />
             <Passport />
-            <NavBar />
         </div>
     );
 }

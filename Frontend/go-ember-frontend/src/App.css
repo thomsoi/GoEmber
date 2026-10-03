@@ -1,3 +1,8 @@
+.main-content {
+  min-height: 100svh;
+  box-sizing: border-box;
+  padding-bottom: calc(84px + env(safe-area-inset-bottom));
+}
 .counter {
   font-size: 16px;
   padding: 5px 10px;
