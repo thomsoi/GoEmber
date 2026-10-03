@@ -13,33 +13,10 @@
 }
 
 .stamp-seal {
-	display: grid;
-	place-items: center;
+	display: block;
 	width: 48px;
-	aspect-ratio: 1;
-	box-sizing: border-box;
-	border: 3px double currentColor;
-	border-radius: 50%;
-	color: #94633e;
-	background: #f4e5d1;
-	font-size: 9px;
-	font-weight: 800;
-	text-transform: uppercase;
-}
-
-.stamp--untiered .stamp-seal {
-	color: #53695f;
-	background: #e5eee8;
-}
-
-.stamp--silver .stamp-seal {
-	color: #69757a;
-	background: #e6eaeb;
-}
-
-.stamp--gold .stamp-seal {
-	color: #9a701b;
-	background: #f6edcf;
+	height: 60px;
+	object-fit: contain;
 }
 
 .stamp-stop-name {
@@ -77,5 +54,6 @@
 
 	.stamp-seal {
 		width: 42px;
+		height: 52px;
 	}
 }

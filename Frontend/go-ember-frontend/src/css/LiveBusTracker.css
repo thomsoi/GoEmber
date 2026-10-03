@@ -52,7 +52,31 @@
 	cursor: pointer;
 }
 
+.live-bus-add-stamps-button {
+	width: 100%;
+	min-height: 46px;
+	border: 1px solid #174d46;
+	border-radius: 8px;
+	padding: 0 14px;
+	background: #fff;
+	color: #174d46;
+	font: inherit;
+	font-size: 14px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.live-bus-add-stamps-button:disabled {
+	cursor: wait;
+	opacity: 0.65;
+}
+
 .live-bus-track-button:focus-visible {
+	outline: 3px solid #8ab8aa;
+	outline-offset: 3px;
+}
+
+.live-bus-add-stamps-button:focus-visible {
 	outline: 3px solid #8ab8aa;
 	outline-offset: 3px;
 }

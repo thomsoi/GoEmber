@@ -1,0 +1,11 @@
+{
+  "name": "goember",
+  "private": true,
+  "scripts": {
+    "install:frontend": "npm --prefix Frontend/go-ember-frontend install",
+    "dev": "npm --prefix Frontend/go-ember-frontend run dev",
+    "build": "npm --prefix Frontend/go-ember-frontend run build",
+    "lint": "npm --prefix Frontend/go-ember-frontend run lint",
+    "preview": "npm --prefix Frontend/go-ember-frontend run preview"
+  }
+}

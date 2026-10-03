@@ -1,4 +1,15 @@
+import defaultStamp from '../assets/stampDefault.png';
+import bronzeStamp from '../assets/stampbronze.png';
+import silverStamp from '../assets/stampsilver.png';
+import goldStamp from '../assets/stampgold.png';
 import '../css/Stamp.css';
+
+const stampImages = {
+    untiered: defaultStamp,
+    bronze: bronzeStamp,
+    silver: silverStamp,
+    gold: goldStamp,
+};
 
 function Stamp({ stamp }) {
     const level = ['untiered', 'bronze', 'silver', 'gold'].includes(stamp.level?.toLowerCase())
@@ -16,9 +27,7 @@ function Stamp({ stamp }) {
 
     return (
         <article className={`stamp stamp--${level}`}>
-            <div className="stamp-seal" aria-label={`${level} stamp`}>
-                <span>{level}</span>
-            </div>
+            <img className="stamp-seal" src={stampImages[level]} alt={`${level} stamp`} />
             <h3 className="stamp-stop-name">{stamp.stopName}</h3>
             <p className="stamp-rarity">Collected by {formattedPopularity}% of users</p>
             <p className="stamp-collection-count">Collected {stamp.timesCollected} {stamp.timesCollected === 1 ? 'time' : 'times'}</p>
