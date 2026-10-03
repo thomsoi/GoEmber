@@ -41,21 +41,17 @@ public class EmberClient {
         .block();
     }
 
-    public Optional<Map> findLocationById(long locationId) {
-        List<Map> locations = webClient.get()
-            .uri(uriBuilder -> uriBuilder
-                .path("/v1/locations/search/")
-                .queryParam("ids", locationId)
-                .build())
-            .retrieve()
-            .bodyToFlux(Map.class)
-            .collectList()
-            .block();
-
-        if (locations == null || locations.isEmpty()) {
-            return Optional.empty();
-        }
-
-        return Optional.of(locations.get(0));
+    public Map getTrip(
+            Long tripId
+    ) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v1/trips/{tripId}/")
+                        .queryParam("route", true)
+                        .queryParam("description", true)
+                        .build(tripId))
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
     }
 }

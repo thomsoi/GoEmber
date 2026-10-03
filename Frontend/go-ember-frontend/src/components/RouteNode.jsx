@@ -1,7 +1,19 @@
-function RouteNode() {
+import '../css/RouteNode.css';
+
+function RouteNode({ stop, isNext }) {
     return (
-        <div>
-            <h1>Route Node</h1>
+        <div className={`route-node${stop.visited ? ' is-visited' : ''}${isNext ? ' is-next' : ''}`}>
+            <span className="route-node-marker" aria-hidden="true" />
+            <div className="route-node-details">
+                <div className="route-node-heading">
+                    <h2>{stop.name}</h2>
+                    <time>{stop.arrivalTime}</time>
+                </div>
+                <p>{stop.location}</p>
+                <span className="route-node-stamp">
+                    {stop.stampCollected ? 'Stamp collected' : 'Stamp not collected'}
+                </span>
+            </div>
         </div>
     );
 }
