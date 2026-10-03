@@ -1,0 +1,87 @@
+.journey-info-rq {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 24px 20px;
+	border: 1px solid #d5e5df;
+	border-radius: 8px;
+	background: #fff;
+	box-shadow: 0 10px 28px rgba(18, 69, 60, 0.08);
+}
+
+.journey-eyebrow {
+	margin: 0 0 8px;
+	color: #287c6c;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 1px;
+}
+
+.journey-info-rq h1,
+.display-route-header h1 {
+	margin: 0;
+	color: #183d37;
+	font-size: 26px;
+	line-height: 1.2;
+	overflow-wrap: anywhere;
+}
+
+.journey-intro {
+	margin: 8px 0 24px;
+	color: #526b64;
+	font-size: 14px;
+}
+
+.journey-request-form {
+	display: grid;
+	gap: 16px;
+	text-align: left;
+}
+
+.journey-field {
+	display: grid;
+	gap: 7px;
+	color: #244a42;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+.journey-field input {
+	width: 100%;
+	min-height: 48px;
+	box-sizing: border-box;
+	border: 1px solid #bfd2cb;
+	border-radius: 8px;
+	padding: 0 12px;
+	background: #fff;
+	color: #183d37;
+	font: inherit;
+	font-size: 15px;
+}
+
+.journey-field input:focus-visible {
+	border-color: #287c6c;
+	outline: 3px solid rgba(40, 124, 108, 0.18);
+}
+
+.journey-form-error {
+	color: #a64035;
+	font-size: 13px;
+}
+
+.journey-submit-button {
+	width: 100%;
+	margin-top: 4px;
+}
+
+.journey-submit-button:hover,
+.visit-stop-button:hover,
+.journey-stats-home:hover {
+	background: #23685e;
+}
+
+.journey-sample-note {
+	margin: 16px 0 0;
+	color: #71847e;
+	font-size: 12px;
+	line-height: 1.4;
+}

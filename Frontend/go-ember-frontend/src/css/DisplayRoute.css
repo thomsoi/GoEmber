@@ -1,0 +1,74 @@
+.display-route {
+	display: flex;
+	flex-direction: column;
+	gap: 22px;
+	width: 100%;
+	min-width: 0;
+	box-sizing: border-box;
+	padding: 20px 16px;
+	border-radius: 8px;
+	background: #fff;
+}
+
+.display-route-header {
+	text-align: center;
+}
+
+.display-route-header h1 {
+	font-size: 24px;
+}
+
+.display-route-note {
+	margin: 8px 0 0;
+	color: #71847e;
+	font-size: 12px;
+}
+
+.display-route-list {
+	display: flex;
+	flex-direction: column;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.display-route-stop {
+	position: relative;
+	min-height: 96px;
+}
+
+.display-route-stop:not(:last-child)::after {
+	position: absolute;
+	top: 34px;
+	bottom: -1px;
+	left: 15px;
+	width: 2px;
+	background: #cbd5d1;
+	content: '';
+}
+
+.display-route-stop.is-visited:not(:last-child)::after {
+	background: #287c6c;
+}
+
+.display-route-progress {
+	display: grid;
+	gap: 10px;
+	justify-items: center;
+	text-align: center;
+}
+
+.display-route-progress p {
+	color: #526b64;
+	font-size: 13px;
+}
+
+.visit-stop-button {
+	width: 100%;
+	background: #287c6c;
+}
+
+.visit-stop-button:disabled {
+	background: #85958f;
+	cursor: default;
+}
