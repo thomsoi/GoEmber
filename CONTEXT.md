@@ -75,7 +75,6 @@ The application should have a compelling demo even if only the Tier 1 functional
 ## Frontend
 
 - React
-- TypeScript
 - Vite
 - Mobile-first responsive UI
 - Tailwind CSS or another lightweight styling solution
