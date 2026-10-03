@@ -35,7 +35,7 @@ function findJourneyEndpointStops(route, origin, destination) {
     ];
 }
 
-function LiveBusTracker({ origin, destination }) {
+function LiveBusTracker({ origin, destination, onSelectedBusChange }) {
     const [buses, setBuses] = useState([]);
     const [selectedVehicleId, setSelectedVehicleId] = useState('');
     const [loading, setLoading] = useState(true);
@@ -66,6 +66,7 @@ function LiveBusTracker({ origin, destination }) {
                 const selectedBus = liveBuses?.find(
                     bus => String(bus.vehicleId) === selectedVehicleIdRef.current,
                 );
+                onSelectedBusChange?.(selectedBus ?? null);
                 if (!selectedBus || (!selectedBus.currentStop && !selectedBus.nextStop)) return;
 
                 const currentStop = selectedBus.currentStop;
@@ -181,7 +182,7 @@ function LiveBusTracker({ origin, destination }) {
             window.clearInterval(intervalId);
             pollRef.current = null;
         };
-    }, [origin, destination]);
+    }, [origin, destination, onSelectedBusChange]);
 
     function selectBus(event) {
         const vehicleId = event.target.value;
@@ -190,6 +191,7 @@ function LiveBusTracker({ origin, destination }) {
         isTrackingRef.current = false;
         setIsTracking(false);
         setSelectedVehicleId(vehicleId);
+        onSelectedBusChange?.(buses.find(bus => String(bus.vehicleId) === vehicleId) ?? null);
         setFeedback(vehicleId ? { type: 'status', text: 'Waiting for this bus’s live stop.' } : null);
         pollRef.current?.();
     }

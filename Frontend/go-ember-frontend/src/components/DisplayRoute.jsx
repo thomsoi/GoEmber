@@ -1,16 +1,16 @@
 import RouteNode from './RouteNode';
 import '../css/DisplayRoute.css';
 
-function DisplayRoute({ startLocation, endLocation, departureTime, stops }) {
+function DisplayRoute({ startLocation, endLocation, routeNumber, stops = [] }) {
     const nextStop = stops.find(stop => !stop.visited);
     const orderedStops = [...stops].reverse();
 
     return (
         <section className="display-route" aria-labelledby="display-route-title">
             <header className="display-route-header">
-                <p className="journey-eyebrow">YOUR JOURNEY · {departureTime}</p>
+                <p className="journey-eyebrow">LIVE BUS ROUTE{routeNumber ? ` · ${routeNumber}` : ''}</p>
                 <h1 id="display-route-title">{startLocation} to {endLocation}</h1>
-                <p className="display-route-note">Sample itinerary · stop times are estimates</p>
+                <p className="display-route-note">Stop order from the selected Ember bus</p>
             </header>
 
             <ol className="display-route-list" aria-label="Journey stops, destination first">
@@ -23,7 +23,6 @@ function DisplayRoute({ startLocation, endLocation, departureTime, stops }) {
                     </li>
                 ))}
             </ol>
-
         </section>
     );
 }
