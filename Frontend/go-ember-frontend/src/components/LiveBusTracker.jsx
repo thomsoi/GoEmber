@@ -15,25 +15,27 @@ function stopsPassedSince(previousStopId, currentStop, route) {
     return [currentStop];
 }
 
-function LiveBusTracker() {
+function LiveBusTracker({ origin, destination }) {
     const [buses, setBuses] = useState([]);
     const [selectedVehicleId, setSelectedVehicleId] = useState('');
     const [loading, setLoading] = useState(true);
     const [feedback, setFeedback] = useState(null);
+    const [isTracking, setIsTracking] = useState(false);
     const selectedVehicleIdRef = useRef('');
     const trackingCursorRef = useRef(null);
+    const isTrackingRef = useRef(false);
     const pollRef = useRef(null);
-    const pollingRef = useRef(false);
 
     useEffect(() => {
         let active = true;
+        let polling = false;
 
         async function pollLiveBuses() {
-            if (pollingRef.current) return;
-            pollingRef.current = true;
+            if (polling) return;
+            polling = true;
 
             try {
-                const liveBuses = await getLiveBuses();
+                const liveBuses = await getLiveBuses(origin, destination);
                 if (!active) return;
                 setBuses(liveBuses ?? []);
                 setLoading(false);
@@ -54,12 +56,12 @@ function LiveBusTracker() {
                         currentStopId: currentStop?.locationId ?? null,
                         nextStop,
                     };
-                    setFeedback({
-                        type: 'status',
-                        text: currentStop
-                            ? `Tracking ${selectedBus.routeNumber || 'bus route'} from ${currentStop.name}.`
-                            : `Tracking ${selectedBus.routeNumber || 'bus route'}; next stop is ${nextStop?.name ?? 'unavailable'}.`,
-                    });
+                    if (isTrackingRef.current) {
+                        setFeedback({
+                            type: 'status',
+                            text: `Tracking Bus ${selectedBus.vehicleId} from ${origin} to ${destination}.`,
+                        });
+                    }
                     return;
                 }
 
@@ -76,6 +78,15 @@ function LiveBusTracker() {
                         : [];
 
                 if (passedStops.length === 0) {
+                    trackingCursorRef.current = {
+                        tripKey,
+                        currentStopId: currentStop?.locationId ?? cursor.currentStopId,
+                        nextStop,
+                    };
+                    return;
+                }
+
+                if (!isTrackingRef.current) {
                     trackingCursorRef.current = {
                         tripKey,
                         currentStopId: currentStop?.locationId ?? cursor.currentStopId,
@@ -112,7 +123,7 @@ function LiveBusTracker() {
                     setFeedback({ type: 'error', text: error.message || 'Could not update live buses.' });
                 }
             } finally {
-                pollingRef.current = false;
+                polling = false;
             }
         }
 
@@ -125,14 +136,40 @@ function LiveBusTracker() {
             window.clearInterval(intervalId);
             pollRef.current = null;
         };
-    }, []);
+    }, [origin, destination]);
 
     function selectBus(event) {
         const vehicleId = event.target.value;
         selectedVehicleIdRef.current = vehicleId;
         trackingCursorRef.current = null;
+        isTrackingRef.current = false;
+        setIsTracking(false);
         setSelectedVehicleId(vehicleId);
         setFeedback(vehicleId ? { type: 'status', text: 'Waiting for this bus’s live stop.' } : null);
+        pollRef.current?.();
+    }
+
+    function toggleTracking() {
+        if (!selectedBus) return;
+
+        if (isTrackingRef.current) {
+            isTrackingRef.current = false;
+            setIsTracking(false);
+            setFeedback({ type: 'status', text: 'Ride ended. Stamps from passed stops are saved.' });
+            return;
+        }
+
+        trackingCursorRef.current = {
+            tripKey: `${selectedBus.vehicleId}:${selectedBus.tripUid}`,
+            currentStopId: selectedBus.currentStop?.locationId ?? null,
+            nextStop: selectedBus.nextStop,
+        };
+        isTrackingRef.current = true;
+        setIsTracking(true);
+        setFeedback({
+            type: 'status',
+            text: `Tracking Bus ${selectedBus.vehicleId} from ${origin} to ${destination}.`,
+        });
         pollRef.current?.();
     }
 
@@ -142,7 +179,7 @@ function LiveBusTracker() {
         <section className="live-bus-tracker" aria-labelledby="live-bus-title">
             <div className="live-bus-heading">
                 <p className="journey-eyebrow">EMBER LIVE</p>
-                <h2 id="live-bus-title">Track a bus</h2>
+                <h2 id="live-bus-title">Buses serving this route</h2>
             </div>
 
             <label className="live-bus-select-label" htmlFor="live-bus-select">Live buses</label>
@@ -156,7 +193,7 @@ function LiveBusTracker() {
                 <option value="">{loading ? 'Loading buses…' : 'Choose a bus'}</option>
                 {buses.map(bus => (
                     <option key={bus.vehicleId} value={bus.vehicleId}>
-                        {`Bus ${bus.vehicleId}${bus.plateNumber ? ` · ${bus.plateNumber}` : ''}${bus.routeNumber ? ` · Route ${bus.routeNumber}` : ''}`}
+                        {`Bus ${bus.vehicleId} · ${origin} → ${destination}`}
                     </option>
                 ))}
             </select>
@@ -167,13 +204,22 @@ function LiveBusTracker() {
                     {selectedBus.nextStop?.name ? ` → ${selectedBus.nextStop.name}` : ''}
                 </p>
             )}
+            {selectedBus && (
+                <button
+                    className="live-bus-track-button"
+                    type="button"
+                    onClick={toggleTracking}
+                >
+                    {isTracking ? 'I got off this bus' : "I'm getting on this bus"}
+                </button>
+            )}
             {feedback && (
                 <p className={`live-bus-feedback is-${feedback.type}`} role={feedback.type === 'error' ? 'alert' : 'status'}>
                     {feedback.text}
                 </p>
             )}
             {!loading && buses.length === 0 && !feedback && (
-                <p className="live-bus-feedback">No active Ember buses are available right now.</p>
+                <p className="live-bus-feedback">No active Ember buses serve this route right now.</p>
             )}
         </section>
     );

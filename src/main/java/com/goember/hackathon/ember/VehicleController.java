@@ -3,6 +3,7 @@ package com.goember.hackathon.ember;
 import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,7 +20,9 @@ public class VehicleController {
     }
 
     @GetMapping("/live")
-    public List<LiveBus> getLiveBuses() {
-        return emberService.getLiveBuses();
+    public List<LiveBus> getLiveBuses(
+            @RequestParam String origin,
+            @RequestParam String destination) {
+        return emberService.getLiveBuses(origin, destination);
     }
 }

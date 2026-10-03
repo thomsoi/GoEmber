@@ -2,7 +2,6 @@ import { useState } from 'react';
 import '../css/JourneyInfoRq.css';
 
 function JourneyInfoRq({ onStartJourney }) {
-    const [departureTime, setDepartureTime] = useState(() => new Date().toTimeString().slice(0, 5));
     const [startLocation, setStartLocation] = useState('');
     const [endLocation, setEndLocation] = useState('');
     const [formError, setFormError] = useState('');
@@ -18,7 +17,6 @@ function JourneyInfoRq({ onStartJourney }) {
         onStartJourney({
             startLocation: startLocation.trim(),
             endLocation: endLocation.trim(),
-            departureTime,
         });
     }
 
@@ -26,18 +24,9 @@ function JourneyInfoRq({ onStartJourney }) {
         <section className="journey-info-rq" aria-labelledby="journey-request-title">
             <p className="journey-eyebrow">EMBER ROUTES</p>
             <h1 id="journey-request-title">Plan a journey</h1>
-            <p className="journey-intro">Choose your departure time and where you are going.</p>
+            <p className="journey-intro">Find live buses serving your route.</p>
 
             <form className="journey-request-form" onSubmit={handleSubmit}>
-                <label className="journey-field">
-                    <span>Departure time</span>
-                    <input
-                        type="time"
-                        value={departureTime}
-                        onChange={event => setDepartureTime(event.target.value)}
-                        required
-                    />
-                </label>
                 <label className="journey-field">
                     <span>Starting point</span>
                     <input
@@ -60,9 +49,8 @@ function JourneyInfoRq({ onStartJourney }) {
                     />
                 </label>
                 {formError && <p className="journey-form-error" role="alert">{formError}</p>}
-                <button className="journey-submit-button" type="submit">Find a route</button>
+                <button className="journey-submit-button" type="submit">Find live buses</button>
             </form>
-            <p className="journey-sample-note">A sample itinerary will be shown until live routes are available.</p>
         </section>
     );
 }

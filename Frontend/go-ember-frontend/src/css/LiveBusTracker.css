@@ -28,6 +28,7 @@
 	padding: 0 12px;
 	background: #fff;
 	color: #183d37;
+	color-scheme: light;
 	font: inherit;
 	font-size: 14px;
 }
@@ -35,6 +36,25 @@
 .live-bus-select:focus-visible {
 	outline: 3px solid #8ab8aa;
 	outline-offset: 2px;
+}
+
+.live-bus-track-button {
+	width: 100%;
+	min-height: 46px;
+	border: 0;
+	border-radius: 8px;
+	padding: 0 14px;
+	background: #174d46;
+	color: #fff;
+	font: inherit;
+	font-size: 14px;
+	font-weight: 700;
+	cursor: pointer;
+}
+
+.live-bus-track-button:focus-visible {
+	outline: 3px solid #8ab8aa;
+	outline-offset: 3px;
 }
 
 .live-bus-stops,

@@ -62,8 +62,9 @@ export function ensureCurrentPassport() {
     return passportBootstrapRequest;
 }
 
-export function getLiveBuses() {
-    return request('/api/vehicles/live');
+export function getLiveBuses(origin, destination) {
+    const params = new URLSearchParams({ origin, destination });
+    return request(`/api/vehicles/live?${params}`);
 }
 
 export function recordLocationVisit(userId, locationId, locationName) {

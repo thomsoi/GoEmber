@@ -17,6 +17,33 @@
 	padding-top: 16px;
 }
 
+.route-tracker-route-summary {
+	display: grid;
+	justify-items: center;
+	gap: 10px;
+	text-align: center;
+}
+
+.route-tracker-route-summary h1 {
+	margin: 0;
+	color: #183d37;
+	font-size: 24px;
+	line-height: 1.2;
+	overflow-wrap: anywhere;
+}
+
+.route-change-button {
+	min-height: 38px;
+	border: 1px solid #b9cec5;
+	border-radius: 6px;
+	padding: 0 12px;
+	background: #fff;
+	color: #174d46;
+	font: inherit;
+	font-size: 13px;
+	cursor: pointer;
+}
+
 .route-end-button,
 .journey-submit-button,
 .visit-stop-button,

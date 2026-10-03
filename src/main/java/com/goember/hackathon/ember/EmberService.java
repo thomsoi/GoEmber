@@ -1,6 +1,7 @@
 package com.goember.hackathon.ember;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.time.Instant;
 
@@ -46,11 +47,42 @@ public class EmberService {
         return emberClient.getTrip(tripId);
     }
 
-    public List<LiveBus> getLiveBuses() {
+    public List<LiveBus> getLiveBuses(String origin, String destination) {
+        if (origin == null || origin.isBlank() || destination == null || destination.isBlank()) {
+            return List.of();
+        }
+
+        String normalizedOrigin = normalizeLocationQuery(origin);
+        String normalizedDestination = normalizeLocationQuery(destination);
         return emberClient.getLiveVehicles().getVehiclesList().stream()
                 .filter(vehicle -> vehicle.hasTrips() && vehicle.getTrips().hasActive())
                 .map(this::toLiveBus)
+                .filter(bus -> servesRoute(bus.route(), normalizedOrigin, normalizedDestination))
                 .toList();
+    }
+
+    private boolean servesRoute(List<BusStop> route, String origin, String destination) {
+        boolean originFound = false;
+        for (BusStop stop : route) {
+            if (!originFound) {
+                originFound = matchesLocation(stop, origin);
+            } else if (matchesLocation(stop, destination)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean matchesLocation(BusStop stop, String query) {
+        return containsQuery(stop.name(), query) || containsQuery(stop.regionName(), query);
+    }
+
+    private boolean containsQuery(String value, String query) {
+        return value != null && normalizeLocationQuery(value).contains(query);
+    }
+
+    private String normalizeLocationQuery(String value) {
+        return value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
     }
 
     private LiveBus toLiveBus(LiveVehicleData vehicle) {
