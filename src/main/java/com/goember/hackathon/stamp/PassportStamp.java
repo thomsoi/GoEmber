@@ -7,6 +7,8 @@ import com.goember.hackathon.passport.Passport;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -35,8 +37,9 @@ public class PassportStamp {
     @JoinColumn(name = "stampId", nullable = false, updatable = false)
     private Stamp stamp;
 
-    @Column(nullable = false)
-    private int tier = 1;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private StampTier tier = StampTier.UNTIERED;
 
     @Column(nullable = false)
     private int visitCount = 1;
@@ -69,12 +72,8 @@ public class PassportStamp {
         return stamp;
     }
 
-    public int getTier() {
+    public StampTier getTier() {
         return tier;
-    }
-
-    public void setTier(int tier) {
-        this.tier = tier;
     }
 
     public int getVisitCount() {
@@ -92,5 +91,6 @@ public class PassportStamp {
     public void recordVisit() {
         visitCount++;
         mostRecentVisitAt = Instant.now();
+        tier = StampTier.forVisitCount(visitCount);
     }
 }

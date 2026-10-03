@@ -46,7 +46,7 @@ public class PassportController {
 			return new StampVisitResponse(
 					stamp.getLocationId(),
 					stamp.getName(),
-					passportStamp.getTier(),
+					passportStamp.getTier().getValue(),
 					passportStamp.getVisitCount(),
 					passportStamp.getVisitCount() > 1,
 					passportStamp.getFirstVisitedAt(),
@@ -61,7 +61,7 @@ public class PassportController {
 				.map(passportStamp -> new PassportStampResponse(
 						passportStamp.getStamp().getLocationId(),
 						passportStamp.getStamp().getName(),
-						passportStamp.getTier(),
+						passportStamp.getTier().getValue(),
 						passportStamp.getVisitCount(),
 						passportStamp.getFirstVisitedAt(),
 						passportStamp.getMostRecentVisitAt()))
@@ -79,7 +79,7 @@ public class PassportController {
 	public record PassportStampResponse(
 			Long locationId,
 			String stampName,
-			int tier,
+			String tier,
 			int visitCount,
 			Instant firstVisitedAt,
 			Instant mostRecentVisitAt) {
@@ -88,7 +88,7 @@ public class PassportController {
 	public record StampVisitResponse(
 			Long locationId,
 			String stampName,
-			int tier,
+			String tier,
 			int visitCount,
 			boolean alreadyVisited,
 			Instant firstVisitedAt,

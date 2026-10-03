@@ -47,7 +47,6 @@ public class PassportService {
 		}
 
 		passportStamp.recordVisit();
-		passportStamp.setTier(passportStamp.getVisitCount());
 		return passportStamp;
 	}
 
