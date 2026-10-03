@@ -17,7 +17,7 @@ public class Stamp {
 	private UUID stampId;
 
 	@Column(name = "locationId", nullable = false, unique = true, updatable = false)
-	private String locationId;
+	private Long locationId;
 
 	@Column(nullable = false)
 	private String name;
@@ -25,7 +25,7 @@ public class Stamp {
 	public Stamp() {
 	}
 
-	public Stamp(String locationId, String name) {
+	public Stamp(Long locationId, String name) {
 		this.locationId = locationId;
 		this.name = name;
 	}
@@ -34,11 +34,11 @@ public class Stamp {
 		return stampId;
 	}
 
-	public String getLocationId() {
+	public Long getLocationId() {
 		return locationId;
 	}
 
-	public void setLocationId(String locationId) {
+	public void setLocationId(Long locationId) {
 		this.locationId = locationId;
 	}
 
