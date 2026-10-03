@@ -5,8 +5,12 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.goember.hackathon.ember.proto.LiveVehicleList;
 
 @Component
 public class EmberClient {
@@ -76,5 +80,24 @@ public class EmberClient {
         }
 
         return Optional.of(firstLocation);
+    }
+
+    public LiveVehicleList getLiveVehicles() {
+        byte[] payload = webClient.get()
+                .uri("/v1/vehicles/live/")
+                .accept(MediaType.valueOf("application/x-protobuf"))
+                .retrieve()
+                .bodyToMono(byte[].class)
+                .block();
+
+        if (payload == null || payload.length == 0) {
+            return LiveVehicleList.getDefaultInstance();
+        }
+
+        try {
+            return LiveVehicleList.parseFrom(payload);
+        } catch (InvalidProtocolBufferException exception) {
+            throw new IllegalStateException("Ember returned an invalid live vehicle feed", exception);
+        }
     }
 }

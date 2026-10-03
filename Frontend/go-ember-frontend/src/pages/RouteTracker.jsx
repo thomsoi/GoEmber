@@ -2,6 +2,7 @@ import { useState } from 'react';
 import DisplayRoute from '../components/DisplayRoute';
 import JourneyInfoRq from '../components/JourneyInfoRq';
 import JourneyStats from '../components/JourneyStats';
+import LiveBusTracker from '../components/LiveBusTracker';
 import '../css/RouteTracker.css';
 
 function addMinutes(time, minutesToAdd) {
@@ -68,18 +69,6 @@ function RouteTracker() {
         });
     }
 
-    function visitNextStop() {
-        const nextStop = activeJourney?.stops.find(stop => !stop.visited);
-        if (!nextStop) return;
-
-        setActiveJourney(current => ({
-            ...current,
-            stops: current.stops.map(stop => stop.id === nextStop.id
-                ? { ...stop, visited: true, stampCollected: true }
-                : stop),
-        }));
-    }
-
     function endJourney() {
         if (!activeJourney) return;
 
@@ -95,6 +84,7 @@ function RouteTracker() {
 
     return (
         <section className="route-tracker" aria-label="Route tracker">
+            <LiveBusTracker />
             {activeJourney ? (
                 <>
                     <DisplayRoute
@@ -102,7 +92,6 @@ function RouteTracker() {
                         endLocation={activeJourney.endLocation}
                         departureTime={activeJourney.departureTime}
                         stops={activeJourney.stops}
-                        onVisitNextStop={visitNextStop}
                     />
                     <div className="route-tracker-stopbar">
                         <button className="route-end-button" type="button" onClick={endJourney}>

@@ -1,11 +1,13 @@
 import '../css/Stamp.css';
 
 function Stamp({ stamp }) {
-    const level = ['bronze', 'silver', 'gold'].includes(stamp.level?.toLowerCase())
+    const level = ['untiered', 'bronze', 'silver', 'gold'].includes(stamp.level?.toLowerCase())
         ? stamp.level.toLowerCase()
-        : 'bronze';
-    const collectionDate = new Date(`${stamp.lastCollected}T00:00:00`);
-    const formattedDate = Number.isNaN(collectionDate.getTime())
+        : 'untiered';
+    const collectionDate = stamp.lastCollected
+        ? new Date(stamp.lastCollected.length === 10 ? `${stamp.lastCollected}T00:00:00` : stamp.lastCollected)
+        : null;
+    const formattedDate = !collectionDate || Number.isNaN(collectionDate.getTime())
         ? stamp.lastCollected
         : new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).format(collectionDate);
 
@@ -16,7 +18,9 @@ function Stamp({ stamp }) {
             </div>
             <h3 className="stamp-stop-name">{stamp.stopName}</h3>
             <p className="stamp-collection-count">Collected {stamp.timesCollected} {stamp.timesCollected === 1 ? 'time' : 'times'}</p>
-            <time className="stamp-last-collected" dateTime={stamp.lastCollected}>{formattedDate}</time>
+            {formattedDate && (
+                <time className="stamp-last-collected" dateTime={stamp.lastCollected}>{formattedDate}</time>
+            )}
         </article>
     );
 }

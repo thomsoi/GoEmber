@@ -1,6 +1,5 @@
 package com.goember.hackathon.passport;
 
-import java.util.UUID;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,9 +22,9 @@ import jakarta.persistence.OneToMany;
 public class Passport {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "passportId", nullable = false, updatable = false)
-    private UUID passportId;
+    private Long passportId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "userId", nullable = false, updatable = false)
@@ -44,7 +43,7 @@ public class Passport {
         this.user = user;
     }
 
-    public UUID getPassportId() {
+    public Long getPassportId() {
         return passportId;
     }
 

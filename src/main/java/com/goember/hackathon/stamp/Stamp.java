@@ -1,7 +1,5 @@
 package com.goember.hackathon.stamp;
 
-import java.util.UUID;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -12,9 +10,9 @@ import jakarta.persistence.Id;
 public class Stamp {
 
 	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "stampId", nullable = false, updatable = false)
-	private UUID stampId;
+	private Long stampId;
 
 	@Column(name = "locationId", nullable = false, unique = true, updatable = false)
 	private Long locationId;
@@ -30,7 +28,7 @@ public class Stamp {
 		this.name = name;
 	}
 
-	public UUID getStampId() {
+	public Long getStampId() {
 		return stampId;
 	}
 

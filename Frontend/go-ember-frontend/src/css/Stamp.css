@@ -27,6 +27,11 @@
 	text-transform: uppercase;
 }
 
+.stamp--untiered .stamp-seal {
+	color: #53695f;
+	background: #e5eee8;
+}
+
 .stamp--silver .stamp-seal {
 	color: #69757a;
 	background: #e6eaeb;

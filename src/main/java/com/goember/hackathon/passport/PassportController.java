@@ -2,7 +2,6 @@ package com.goember.hackathon.passport;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -72,7 +71,7 @@ public class PassportController {
 	}
 
 	public record PassportResponse(
-			UUID passportId,
+			Long passportId,
 			float totalDistanceTravelled,
 			List<PassportStampResponse> stamps) {
 	}

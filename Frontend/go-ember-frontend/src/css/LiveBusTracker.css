@@ -1,0 +1,55 @@
+.live-bus-tracker {
+	display: grid;
+	gap: 10px;
+	width: 100%;
+	padding-bottom: 20px;
+	border-bottom: 1px solid #d9e6df;
+}
+
+.live-bus-heading h2 {
+	margin: 0;
+	color: #174d46;
+	text-align: center;
+}
+
+.live-bus-select-label {
+	color: #526b64;
+	font-size: 13px;
+	font-weight: 600;
+	text-align: left;
+}
+
+.live-bus-select {
+	width: 100%;
+	min-height: 46px;
+	box-sizing: border-box;
+	border: 1px solid #b9cec5;
+	border-radius: 6px;
+	padding: 0 12px;
+	background: #fff;
+	color: #183d37;
+	font: inherit;
+	font-size: 14px;
+}
+
+.live-bus-select:focus-visible {
+	outline: 3px solid #8ab8aa;
+	outline-offset: 2px;
+}
+
+.live-bus-stops,
+.live-bus-feedback {
+	color: #526b64;
+	font-size: 13px;
+	line-height: 1.4;
+	text-align: center;
+	overflow-wrap: anywhere;
+}
+
+.live-bus-feedback.is-success {
+	color: #287c6c;
+}
+
+.live-bus-feedback.is-error {
+	color: #a64035;
+}

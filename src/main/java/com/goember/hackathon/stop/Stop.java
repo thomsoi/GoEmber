@@ -1,7 +1,5 @@
 package com.goember.hackathon.stop;
 
-import java.util.UUID;
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -12,7 +10,7 @@ public class Stop {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private UUID id;
+    private Long id;
 
     private Long emberLocationId; // id provided by the Ember API
 
@@ -48,7 +46,7 @@ public class Stop {
         this.longitude = longitude;
     }
 
-    public UUID getId() {
+    public Long getId() {
         return id;
     }
 

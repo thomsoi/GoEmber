@@ -2,9 +2,14 @@ package com.goember.hackathon.ember;
 
 import java.util.List;
 import java.util.Map;
+import java.time.Instant;
 
 import org.springframework.stereotype.Service;
 
+import com.goember.hackathon.ember.proto.GPSInfo;
+import com.goember.hackathon.ember.proto.LiveVehicleData;
+import com.goember.hackathon.ember.proto.MinimalLocationTime;
+import com.goember.hackathon.ember.proto.MinimalVehicleTrip;
 import com.goember.hackathon.stop.Stop;
 
 @Service
@@ -41,6 +46,42 @@ public class EmberService {
         return emberClient.getTrip(tripId);
     }
 
+    public List<LiveBus> getLiveBuses() {
+        return emberClient.getLiveVehicles().getVehiclesList().stream()
+                .filter(vehicle -> vehicle.hasTrips() && vehicle.getTrips().hasActive())
+                .map(this::toLiveBus)
+                .toList();
+    }
+
+    private LiveBus toLiveBus(LiveVehicleData vehicle) {
+        MinimalVehicleTrip trip = vehicle.getTrips().getActive();
+        GPSInfo gps = vehicle.hasGps() ? vehicle.getGps() : null;
+        return new LiveBus(
+                Integer.toUnsignedLong(vehicle.getId()),
+                vehicle.getPlateNumber(),
+                trip.getUid(),
+                trip.getRouteNumber(),
+                trip.hasCurrentStop() ? toBusStop(trip.getCurrentStop()) : null,
+                trip.hasNextStop() ? toBusStop(trip.getNextStop()) : null,
+                trip.getRouteList().stream().map(this::toBusStop).toList(),
+                gps == null ? null : gps.getLatitude(),
+                gps == null ? null : gps.getLongitude(),
+                gps == null || !gps.hasLastUpdated() ? null : toInstant(gps.getLastUpdated().getSeconds(), gps.getLastUpdated().getNanos())
+        );
+    }
+
+    private BusStop toBusStop(MinimalLocationTime stop) {
+        return new BusStop(
+                Integer.toUnsignedLong(stop.getId()),
+                stop.hasLocation() ? asString(stop.getLocation().getName()) : "",
+                stop.hasLocation() ? asString(stop.getLocation().getRegionName()) : ""
+        );
+    }
+
+    private Instant toInstant(long seconds, int nanos) {
+        return Instant.ofEpochSecond(seconds, nanos);
+    }
+
     private Stop toStop(Map<String, Object> location) {
         return new Stop(
                 asLong(location.get("id")),
@@ -68,5 +109,21 @@ public class EmberService {
             return number.doubleValue();
         }
         return 0.0;
+    }
+
+    public record LiveBus(
+            long vehicleId,
+            String plateNumber,
+            String tripUid,
+            String routeNumber,
+            BusStop currentStop,
+            BusStop nextStop,
+            List<BusStop> route,
+            Double latitude,
+            Double longitude,
+            Instant positionUpdatedAt) {
+    }
+
+    public record BusStop(long locationId, String name, String regionName) {
     }
 }

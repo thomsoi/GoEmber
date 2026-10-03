@@ -1,7 +1,6 @@
 package com.goember.hackathon.stamp;
 
 import java.time.Instant;
-import java.util.UUID;
 
 import com.goember.hackathon.passport.Passport;
 
@@ -25,9 +24,9 @@ import jakarta.persistence.UniqueConstraint;
 public class PassportStamp {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "passportStampId", nullable = false, updatable = false)
-    private UUID passportStampId;
+    private Long passportStampId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "passportId", nullable = false, updatable = false)
@@ -65,7 +64,7 @@ public class PassportStamp {
         return StampTier.forVisitCount(totalVisits);
     }
 
-    public UUID getPassportStampId() {
+    public Long getPassportStampId() {
         return passportStampId;
     }
 

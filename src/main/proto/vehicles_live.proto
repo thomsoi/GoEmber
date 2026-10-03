@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package to.ember.vehicles;
+
+option java_package = "com.goember.hackathon.ember.proto";
+option java_multiple_files = true;
+
+message LiveVehicleList {
+  repeated LiveVehicleData vehicles = 1;
+}
+
+message LiveVehicleData {
+  uint32 id = 1;
+  string plate_number = 2;
+  MinimalVehicleTrips trips = 3;
+  GPSInfo gps = 4;
+  GPSInfo secondary_gps = 5;
+}
+
+message GPSInfo {
+  ProtoTimestamp last_updated = 1;
+  double longitude = 2;
+  double latitude = 3;
+  optional double heading = 4;
+}
+
+message ProtoTimestamp {
+  int64 seconds = 1;
+  int32 nanos = 2;
+}
+
+message MinimalVehicleTrips {
+  MinimalVehicleTrip active = 1;
+  MinimalVehicleTrip next = 2;
+}
+
+message MinimalVehicleTrip {
+  uint32 id = 1;
+  string uid = 2;
+  string route_number = 3;
+  repeated MinimalLocationTime route = 4;
+  optional MinimalLocationTime current_stop = 7;
+  optional MinimalLocationTime next_stop = 8;
+}
+
+message MinimalLocationTime {
+  uint32 id = 1;
+  MinimalLocation location = 2;
+}
+
+message MinimalLocation {
+  string name = 1;
+  string region_name = 2;
+  string detailed_name = 3;
+}

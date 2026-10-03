@@ -1,7 +1,7 @@
 import RouteNode from './RouteNode';
 import '../css/DisplayRoute.css';
 
-function DisplayRoute({ startLocation, endLocation, departureTime, stops, onVisitNextStop }) {
+function DisplayRoute({ startLocation, endLocation, departureTime, stops }) {
     const nextStop = stops.find(stop => !stop.visited);
     const orderedStops = [...stops].reverse();
 
@@ -24,19 +24,6 @@ function DisplayRoute({ startLocation, endLocation, departureTime, stops, onVisi
                 ))}
             </ol>
 
-            <div className="display-route-progress">
-                <p>
-                    {stops.filter(stop => stop.visited).length} of {stops.length} stops visited
-                </p>
-                <button
-                    className="visit-stop-button"
-                    type="button"
-                    onClick={onVisitNextStop}
-                    disabled={!nextStop}
-                >
-                    {nextStop ? `Mark ${nextStop.name} visited` : 'All stops visited'}
-                </button>
-            </div>
         </section>
     );
 }

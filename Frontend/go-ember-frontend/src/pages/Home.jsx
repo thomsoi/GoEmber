@@ -1,26 +1,70 @@
+import { useEffect, useState } from 'react';
 import ProgressBar from '../components/ProgressBar';
 import Passport from '../components/Passport';
+import { ensureCurrentPassport } from '../services/BackendAPI';
 import '../css/Home.css';
 
-const sampleStamps = [
-    { id: 'glenview-terminal', stopName: 'Glenview Terminal', timesCollected: 4, lastCollected: '2026-09-18', level: 'gold' },
-    { id: 'harbour-exchange', stopName: 'Harbour Exchange', timesCollected: 3, lastCollected: '2026-09-12', level: 'silver' },
-    { id: 'cedar-square', stopName: 'Cedar Square', timesCollected: 1, lastCollected: '2026-09-06', level: 'bronze' },
-    { id: 'riverside', stopName: 'Riverside', timesCollected: 2, lastCollected: '2026-09-01', level: 'bronze' },
-    { id: 'old-town-market', stopName: 'Old Town Market', timesCollected: 3, lastCollected: '2026-08-24', level: 'silver' },
-    { id: 'university-gate', stopName: 'University Gate', timesCollected: 1, lastCollected: '2026-08-16', level: 'bronze' },
-];
-
 function Home() {
+    const [passportData, setPassportData] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [reloadKey, setReloadKey] = useState(0);
+
+    useEffect(() => {
+        let active = true;
+
+        ensureCurrentPassport()
+            .then(data => {
+                if (active) setPassportData(data);
+            })
+            .catch(() => {
+                if (active) setError('Could not load your passport. Check that the Ember service is running and try again.');
+            })
+            .finally(() => {
+                if (active) setLoading(false);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [reloadKey]);
+
+    function retryLoadingPassport() {
+        setLoading(true);
+        setError('');
+        setReloadKey(key => key + 1);
+    }
+
+    const passport = passportData?.passport;
+    const stamps = (passport?.stamps ?? []).map(stamp => ({
+        id: stamp.locationId,
+        stopName: stamp.stampName,
+        timesCollected: stamp.visitCount,
+        lastCollected: stamp.mostRecentVisitAt,
+        level: stamp.tier,
+    }));
+
     return (
         <div className="home">
-            <ProgressBar stampsCollected={sampleStamps.length} />
-            <Passport
-                stamps={sampleStamps}
-                routesTravelled={3}
-                townsVisited={6}
-                distanceTravelledKm={42.8}
-            />
+            {loading && <p className="passport-data-state" role="status">Loading your passport…</p>}
+            {error && (
+                <div className="passport-data-error" role="alert">
+                    <p>{error}</p>
+                    <button type="button" onClick={retryLoadingPassport}>Try again</button>
+                </div>
+            )}
+            {passport && !error && (
+                <>
+                    <ProgressBar stampsCollected={stamps.length} />
+                    <Passport
+                        username={passportData.username}
+                        stamps={stamps}
+                        routesTravelled={0}
+                        townsVisited={0}
+                        distanceTravelledKm={passport.totalDistanceTravelled}
+                    />
+                </>
+            )}
         </div>
     );
 }
