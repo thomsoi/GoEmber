@@ -39,4 +39,18 @@ public class EmberClient {
         .collectList()
         .block();
     }
+
+     public Map getTrip(
+            Long tripId
+    ) {
+        return webClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/v1/trips/{tripId}/")
+                        .queryParam("route", true)
+                        .queryParam("description", true)
+                        .build(tripId))
+                .retrieve()
+                .bodyToMono(Map.class)
+                .block();
+    }
 }
