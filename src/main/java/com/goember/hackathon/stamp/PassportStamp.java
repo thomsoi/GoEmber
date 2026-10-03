@@ -58,6 +58,11 @@ public class PassportStamp {
         this.stamp = stamp;
         this.firstVisitedAt = Instant.now();
         this.mostRecentVisitAt = firstVisitedAt;
+        this.tier = calculateTier(1);
+    }
+
+    private StampTier calculateTier(int totalVisits) {
+        return StampTier.forVisitCount(totalVisits);
     }
 
     public UUID getPassportStampId() {

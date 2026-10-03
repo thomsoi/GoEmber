@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -12,16 +13,15 @@ public class EmberClient {
 
     private final WebClient webClient;
 
-    public EmberClient(WebClient webClient) {
+    public EmberClient(@Qualifier("emberWebClient") WebClient webClient) {
         this.webClient = webClient;
     }
 
-    public List<Map> searchLocations(
-        String query,
-        int limit,
-        String type
-        )
-        {
+    public List<Map<String, Object>> searchLocations(
+            String query,
+            int limit,
+            String type
+    ) {
         return webClient.get()
             .uri(uriBuilder -> {
                 uriBuilder
@@ -29,21 +29,20 @@ public class EmberClient {
                     .queryParam("limit", limit)
                     .queryParam("type", type);
 
-            if (query != null && !query.isBlank()) {
-                uriBuilder.queryParam("query", query);
-            }
+                if (query != null && !query.isBlank()) {
+                    uriBuilder.queryParam("query", query);
+                }
 
-            return uriBuilder.build();
-        })
-        .retrieve()
-        .bodyToFlux(Map.class)
-        .collectList()
-        .block();
+                return uriBuilder.build();
+            })
+            .retrieve()
+            .bodyToFlux(Map.class)
+            .map(payload -> (Map<String, Object>) payload)
+            .collectList()
+            .block();
     }
 
-    public Map getTrip(
-            Long tripId
-    ) {
+    public Map<String, Object> getTrip(Long tripId) {
         return webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/v1/trips/{tripId}/")
@@ -55,14 +54,15 @@ public class EmberClient {
                 .block();
     }
 
-    public Optional<Map> findLocationById(long locationId) {
-        List<Map> locations = webClient.get()
+    public Optional<Map<String, Object>> findLocationById(long locationId) {
+        List<Map<String, Object>> locations = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                         .path("/v1/locations/search/")
                         .queryParam("ids", locationId)
                         .build())
                 .retrieve()
                 .bodyToFlux(Map.class)
+                .map(payload -> (Map<String, Object>) payload)
                 .collectList()
                 .block();
 
@@ -70,6 +70,11 @@ public class EmberClient {
             return Optional.empty();
         }
 
-        return Optional.of(locations.get(0));
+        Map<String, Object> firstLocation = locations.get(0);
+        if (firstLocation == null || firstLocation.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(firstLocation);
     }
 }

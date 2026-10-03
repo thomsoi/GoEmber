@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.goember.hackathon.stamp.PassportStamp;
 import com.goember.hackathon.stamp.Stamp;
+import com.goember.hackathon.stamp.StampTier;
 
 import jakarta.persistence.EntityNotFoundException;
 

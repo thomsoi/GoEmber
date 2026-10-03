@@ -25,13 +25,26 @@ public class StopService {
             double latitude,
             double longitude
     ) {
+        return findNearestStop(latitude, longitude, null);
+    }
+
+    public Stop findNearestStop(
+            double latitude,
+            double longitude,
+            List<Long> allowedStopIds
+    ) {
         List<Stop> stops = getStops();
+
+        if (allowedStopIds != null && !allowedStopIds.isEmpty()) {
+            stops = stops.stream()
+                    .filter(stop -> stop.getEmberLocationId() != null && allowedStopIds.contains(stop.getEmberLocationId()))
+                    .toList();
+        }
 
         Stop nearestStop = null;
         double nearestDistance = Double.MAX_VALUE;
 
         for (Stop stop : stops) {
-
             double distance = distanceInKm(
                     latitude,
                     longitude,

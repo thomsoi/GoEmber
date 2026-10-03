@@ -40,11 +40,11 @@ public class PassportService {
 		PassportStamp passportStamp = passport.getStamps().stream()
 				.filter(entry -> entry.getStamp().getLocationId().equals(emberLocationId))
 				.findFirst()
-				.orElse(null);
-
-		if (passportStamp == null) {
-			return passport.addStamp(stamp);
-		}
+				.orElseGet(() -> {
+					PassportStamp createdStamp = passport.addStamp(stamp);
+					passportRepository.save(passport);
+					return createdStamp;
+				});
 
 		passportStamp.recordVisit();
 		return passportStamp;

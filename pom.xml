@@ -85,6 +85,7 @@
 	</dependencies>
 
 	<build>
+		<testSourceDirectory>${project.basedir}/test/java</testSourceDirectory>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>

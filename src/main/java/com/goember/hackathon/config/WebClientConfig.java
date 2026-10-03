@@ -3,6 +3,7 @@ package com.goember.hackathon.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -17,5 +18,12 @@ public class WebClientConfig {
                 .baseUrl(baseUrl)
                 .defaultHeader("Accept", MediaType.APPLICATION_JSON_VALUE)
                 .build();
+    }
+
+    @Bean
+    @Primary
+    public WebClient webClient(
+            @Value("${ember.api.base-url:https://api.ember.to}") String baseUrl) {
+        return emberWebClient(baseUrl);
     }
 }

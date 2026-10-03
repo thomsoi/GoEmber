@@ -6,9 +6,14 @@ import java.util.Optional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 
 @RestController
 @RequestMapping("/api/journeys")
@@ -21,25 +26,16 @@ public class JourneyController {
     }
 
     @PostMapping
-    public Journey createJourney(
-            @RequestParam Long userId,
-            @RequestParam Long emberTripId,
-            @RequestParam Long originLocationId,
-            @RequestParam Long destinationLocationId,
-            @RequestParam String originName,
-            @RequestParam String destinationName,
-            @RequestParam LocalDateTime scheduledDeparture,
-            @RequestParam LocalDateTime scheduledArrival
-    ) {
+    public Journey createJourney(@Valid @RequestBody CreateJourneyRequest request) {
         return journeyService.createJourney(
-                userId,
-                emberTripId,
-                originLocationId,
-                destinationLocationId,
-                originName,
-                destinationName,
-                scheduledDeparture,
-                scheduledArrival
+                request.userId(),
+                request.emberTripId(),
+                request.originLocationId(),
+                request.destinationLocationId(),
+                request.originName(),
+                request.destinationName(),
+                request.scheduledDeparture(),
+                request.scheduledArrival()
         );
     }
 
@@ -62,4 +58,15 @@ public class JourneyController {
     public Journey completeJourney(@PathVariable Long journeyId) {
         return journeyService.completeJourney(journeyId);
     }
+
+    public record CreateJourneyRequest(
+            @NotNull Long userId,
+            @NotNull Long emberTripId,
+            @NotNull Long originLocationId,
+            @NotNull Long destinationLocationId,
+            @NotBlank String originName,
+            @NotBlank String destinationName,
+            @NotNull LocalDateTime scheduledDeparture,
+            @NotNull LocalDateTime scheduledArrival
+    ) {}
 }
