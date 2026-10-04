@@ -60,7 +60,7 @@ function Home() {
                     <Passport
                         username={passportData.username}
                         stamps={stamps}
-                        routesTravelled={passport.routesTravelled ?? 0}
+                        busNumbersRidden={passport.busNumbersRidden ?? 0}
                         townsVisited={passport.townsVisited ?? 0}
                         distanceTravelledKm={passport.totalDistanceTravelled}
                     />

@@ -23,6 +23,13 @@ public class Stamp {
 	@Column(nullable = false)
 	private String name;
 
+	@Column(length = 100)
+	private String regionName;
+
+	private Double latitude;
+
+	private Double longitude;
+
 	public Stamp() {
 	}
 
@@ -30,6 +37,13 @@ public class Stamp {
 		this.locationId = locationId;
 		this.stampKey = "location:" + locationId;
 		this.name = name;
+	}
+
+	public Stamp(Long locationId, String name, String regionName, Double latitude, Double longitude) {
+		this(locationId, name);
+		this.regionName = regionName;
+		this.latitude = latitude;
+		this.longitude = longitude;
 	}
 
 	public Stamp(String stampKey, String name) {
@@ -55,6 +69,22 @@ public class Stamp {
 
 	public String getName() {
 		return name;
+	}
+
+	public String getRegionName() {
+		return regionName;
+	}
+
+	public Double getLatitude() {
+		return latitude;
+	}
+
+	public Double getLongitude() {
+		return longitude;
+	}
+
+	public void setRegionName(String regionName) {
+		this.regionName = regionName;
 	}
 
 	public void setName(String name) {

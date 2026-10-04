@@ -6,6 +6,7 @@
     "dev": "npm --prefix Frontend/go-ember-frontend run dev",
     "build": "npm --prefix Frontend/go-ember-frontend run build",
     "lint": "npm --prefix Frontend/go-ember-frontend run lint",
+    "test": "npm --prefix Frontend/go-ember-frontend test",
     "preview": "npm --prefix Frontend/go-ember-frontend run preview"
   }
 }

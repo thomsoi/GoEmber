@@ -19,10 +19,12 @@ public class VehicleController {
         this.emberService = emberService;
     }
 
-    @GetMapping("/live")
+    @GetMapping(value = "/live", produces = "application/json")
     public List<LiveBus> getLiveBuses(
-            @RequestParam String origin,
-            @RequestParam String destination) {
-        return emberService.getLiveBuses(origin, destination);
+            @RequestParam(name = "origin", required = false, defaultValue = "") String origin,
+            @RequestParam(name = "destination", required = false, defaultValue = "") String destination,
+            @RequestParam(name = "trackedTripUid", required = false, defaultValue = "") String trackedTripUid,
+            @RequestParam(name = "detailsTripUid", required = false, defaultValue = "") String detailsTripUid) {
+        return emberService.getLiveBuses(origin, destination, trackedTripUid, detailsTripUid);
     }
 }

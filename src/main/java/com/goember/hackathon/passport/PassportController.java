@@ -20,20 +20,27 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Positive;
+import org.springframework.web.bind.annotation.RequestHeader;
+import com.goember.hackathon.user.GuestAccess;
 
 @RestController
 @RequestMapping("/api/passports")
 public class PassportController {
 
 	private final PassportService passportService;
+	private final GuestAccess access;
 
-	public PassportController(PassportService passportService) {
+	public PassportController(PassportService passportService, GuestAccess access) {
 		this.passportService = passportService;
+		this.access = access;
 	}
 
 	@GetMapping("/{userId}")
-	public PassportResponse getPassport(@PathVariable Long userId) {
+	public PassportResponse getPassport(@PathVariable Long userId,
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+		access.requireUser(userId, authorization);
 		try {
 			return toPassportResponse(passportService.getOrCreatePassport(userId));
 		} catch (EntityNotFoundException exception) {
@@ -44,10 +51,13 @@ public class PassportController {
 	@PostMapping("/{userId}/journeys")
 	public void recordCompletedJourney(
 			@PathVariable Long userId,
-			@Valid @RequestBody CompletedJourneyRequest request) {
+			@Valid @RequestBody CompletedJourneyRequest request,
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+		access.requireUser(userId, authorization);
 		passportService.recordCompletedJourney(
 				userId,
 				request.journeyKey(),
+				request.routeNumber(),
 				request.originLocationId(),
 				request.destinationLocationId(),
 				request.originName(),
@@ -59,10 +69,12 @@ public class PassportController {
 	public StampVisitResponse recordLocationVisit(
 			@PathVariable Long userId,
 			@PathVariable long emberLocationId,
-			@RequestBody(required = false) LocationVisitRequest request) {
+			@Valid @RequestBody LocationVisitRequest request,
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+		access.requireUser(userId, authorization);
 		try {
 			String locationName = request == null ? null : request.locationName();
-			PassportStamp passportStamp = passportService.recordLocationVisit(userId, emberLocationId, locationName);
+			PassportStamp passportStamp = passportService.recordLocationVisit(userId, emberLocationId, locationName, request.operationId());
 			Stamp stamp = passportStamp.getStamp();
 			return new StampVisitResponse(
 					stamp.getLocationId(),
@@ -79,11 +91,22 @@ public class PassportController {
 		}
 	}
 
+	@PostMapping("/{userId}/locations/visits")
+	public void recordLocationVisits(@PathVariable Long userId,
+			@Valid @RequestBody LocationVisitsRequest request,
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+		access.requireUser(userId, authorization);
+		passportService.recordLocationVisits(userId, request.visits().stream()
+				.map(visit -> new PassportService.LocationVisit(visit.locationId(), visit.operationId())).toList());
+	}
+
 	@PostMapping("/{userId}/towns/visits")
 	public StampVisitResponse recordTownVisit(
 			@PathVariable Long userId,
-			@Valid @RequestBody TownVisitRequest request) {
-		PassportStamp passportStamp = passportService.recordTownVisit(userId, request.townName());
+			@Valid @RequestBody TownVisitRequest request,
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+		access.requireUser(userId, authorization);
+		PassportStamp passportStamp = passportService.recordTownVisit(userId, request.townName(), request.operationId());
 		Stamp stamp = passportStamp.getStamp();
 		return new StampVisitResponse(
 				stamp.getLocationId(),
@@ -116,7 +139,7 @@ public class PassportController {
 		return new PassportResponse(
 				passport.getPassportId(),
 				travelStats.totalDistanceKilometers(),
-				travelStats.routesTravelled(),
+				travelStats.busNumbersRidden(),
 				travelStats.townsVisited(),
 				stamps);
 	}
@@ -124,7 +147,7 @@ public class PassportController {
 	public record PassportResponse(
 			Long passportId,
 			Double totalDistanceTravelled,
-			long routesTravelled,
+			long busNumbersRidden,
 			long townsVisited,
 			List<PassportStampResponse> stamps) {
 	}
@@ -152,18 +175,24 @@ public class PassportController {
 			Instant mostRecentVisitAt) {
 	}
 
-	public record LocationVisitRequest(String locationName) {
+	public record LocationVisitRequest(String locationName, @NotBlank @Size(max = 100) String operationId) {
 	}
 
-	public record TownVisitRequest(@NotBlank String townName) {
+	public record LocationVisitsRequest(@NotEmpty @Size(max = 50) List<@Valid LocationVisitItem> visits) {}
+	public record LocationVisitItem(@NotNull @Positive Long locationId,
+			@NotBlank @Size(max = 100) String operationId) {}
+
+	public record TownVisitRequest(@NotBlank @Size(max = 100) String townName,
+			@NotBlank @Size(max = 100) String operationId) {
 	}
 
 	public record CompletedJourneyRequest(
-			@NotBlank String journeyKey,
+			@NotBlank @Size(max = 100) String journeyKey,
+			@Size(max = 32) String routeNumber,
 			@NotNull @Positive Long originLocationId,
 			@NotNull @Positive Long destinationLocationId,
-			@NotBlank String originName,
-			@NotBlank String destinationName,
-			@NotEmpty List<@NotBlank String> towns) {
+			@NotBlank @Size(max = 255) String originName,
+			@NotBlank @Size(max = 255) String destinationName,
+			@NotNull @Size(max = 200) List<@NotBlank @Size(max = 100) String> towns) {
 	}
 }

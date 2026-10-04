@@ -14,19 +14,26 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import org.springframework.web.bind.annotation.RequestHeader;
+import com.goember.hackathon.user.GuestAccess;
 
 @RestController
 @RequestMapping("/api/journeys")
 public class JourneyController {
 
     private final JourneyService journeyService;
+    private final GuestAccess access;
 
-    public JourneyController(JourneyService journeyService) {
+    public JourneyController(JourneyService journeyService, GuestAccess access) {
         this.journeyService = journeyService;
+        this.access = access;
     }
 
     @PostMapping
-    public Journey createJourney(@Valid @RequestBody CreateJourneyRequest request) {
+    public Journey createJourney(@Valid @RequestBody CreateJourneyRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        access.requireUser(request.userId(), authorization);
         return journeyService.createJourney(
                 request.userId(),
                 request.emberTripId(),
@@ -40,30 +47,39 @@ public class JourneyController {
     }
 
     @GetMapping("/{journeyId}")
-    public Journey getJourney(@PathVariable Long journeyId) {
-        return journeyService.getJourney(journeyId);
+    public Journey getJourney(@PathVariable Long journeyId,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        Journey journey = journeyService.getJourney(journeyId);
+        access.requireUser(journey.getUserId(), authorization);
+        return journey;
     }
 
     @GetMapping("/active")
-    public Optional<Journey> getActiveJourney(@RequestParam Long userId) {
+    public Optional<Journey> getActiveJourney(@RequestParam Long userId,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        access.requireUser(userId, authorization);
         return journeyService.getActiveJourney(userId);
     }
 
     @PostMapping("/{journeyId}/start")
-    public Journey startJourney(@PathVariable Long journeyId) {
+    public Journey startJourney(@PathVariable Long journeyId,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        access.requireUser(journeyService.getJourney(journeyId).getUserId(), authorization);
         return journeyService.startJourney(journeyId);
     }
 
     @PostMapping("/{journeyId}/complete")
-    public Journey completeJourney(@PathVariable Long journeyId) {
+    public Journey completeJourney(@PathVariable Long journeyId,
+            @RequestHeader(value = "Authorization", required = false) String authorization) {
+        access.requireUser(journeyService.getJourney(journeyId).getUserId(), authorization);
         return journeyService.completeJourney(journeyId);
     }
 
     public record CreateJourneyRequest(
-            @NotNull Long userId,
-            @NotNull Long emberTripId,
-            @NotNull Long originLocationId,
-            @NotNull Long destinationLocationId,
+            @NotNull @Positive Long userId,
+            @NotNull @Positive Long emberTripId,
+            @NotNull @Positive Long originLocationId,
+            @NotNull @Positive Long destinationLocationId,
             @NotBlank String originName,
             @NotBlank String destinationName,
             @NotNull LocalDateTime scheduledDeparture,

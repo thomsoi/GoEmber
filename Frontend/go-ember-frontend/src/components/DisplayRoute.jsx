@@ -2,7 +2,7 @@ import RouteNode from './RouteNode';
 import '../css/DisplayRoute.css';
 
 function DisplayRoute({ startLocation, endLocation, routeNumber, stops = [] }) {
-    const nextStop = stops.find(stop => !stop.visited);
+    const nextStop = stops.find(stop => stop.next);
     const orderedStops = [...stops].reverse();
 
     return (

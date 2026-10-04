@@ -55,7 +55,7 @@ public class PassportStamp {
     public PassportStamp(Passport passport, Stamp stamp) {
         this.passport = passport;
         this.stamp = stamp;
-        this.firstVisitedAt = Instant.now();
+        this.firstVisitedAt = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         this.mostRecentVisitAt = firstVisitedAt;
         this.tier = calculateTier(1);
     }
@@ -94,7 +94,7 @@ public class PassportStamp {
 
     public void recordVisit() {
         visitCount++;
-        mostRecentVisitAt = Instant.now();
+        mostRecentVisitAt = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
         tier = StampTier.forVisitCount(visitCount);
     }
 }

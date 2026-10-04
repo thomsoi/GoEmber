@@ -33,8 +33,11 @@ public class PassportJourney {
     @Column(name = "journeyKey", nullable = false, updatable = false)
     private String journeyKey;
 
-    @Column(nullable = false, updatable = false)
+    @Column(updatable = false)
     private Double distanceKilometers;
+
+    @Column(updatable = false, length = 32)
+    private String routeNumber;
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(
@@ -49,16 +52,22 @@ public class PassportJourney {
     public PassportJourney(
             Passport passport,
             String journeyKey,
+            String routeNumber,
             Double distanceKilometers,
             Set<String> towns) {
         this.passport = passport;
         this.journeyKey = journeyKey;
+        this.routeNumber = routeNumber;
         this.distanceKilometers = distanceKilometers;
         this.towns = new HashSet<>(towns);
     }
 
     public Double getDistanceKilometers() {
         return distanceKilometers;
+    }
+
+    public String getRouteNumber() {
+        return routeNumber;
     }
 
     public Set<String> getTowns() {

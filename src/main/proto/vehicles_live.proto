@@ -46,6 +46,15 @@ message MinimalVehicleTrip {
 message MinimalLocationTime {
   uint32 id = 1;
   MinimalLocation location = 2;
+  bool allow_boarding = 3;
+  bool allow_drop_off = 4;
+  MinimalEventTimes departure = 5;
+}
+
+message MinimalEventTimes {
+  ProtoTimestamp scheduled = 1;
+  ProtoTimestamp actual = 2;
+  ProtoTimestamp estimated = 3;
 }
 
 message MinimalLocation {

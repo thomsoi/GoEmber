@@ -6,7 +6,7 @@ import '../css/Passport.css';
 function Passport({
     username = 'Guest',
     stamps = [],
-    routesTravelled = 0,
+    busNumbersRidden = 0,
     townsVisited = 0,
     distanceTravelledKm = 0,
 }) {
@@ -68,11 +68,11 @@ function Passport({
                                     </dd>
                                 </div>
                                 <div className="passport-stat">
-                                    <dt>Routes travelled</dt>
-                                    <dd>{formatCount(routesTravelled)}</dd>
+                                    <dt>Bus numbers ridden</dt>
+                                    <dd>{formatCount(busNumbersRidden)}</dd>
                                 </div>
                                 <div className="passport-stat">
-                                    <dt>Towns visited</dt>
+                                    <dt>Cities and towns visited</dt>
                                     <dd>{formatCount(townsVisited)}</dd>
                                 </div>
                                 <div className="passport-stat">

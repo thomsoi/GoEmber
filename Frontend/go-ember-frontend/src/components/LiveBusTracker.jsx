@@ -1,401 +1,217 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-    ensureCurrentPassport,
-    getLiveBuses,
-    recordCompletedJourney,
-    recordLocationVisit,
-    recordTownVisit,
+    ensureCurrentPassport, currentGuestToken, getLiveBuses,
+    recordCompletedJourney, recordLocationVisits, recordTownVisit,
 } from '../services/BackendAPI';
+import { startRide, advanceRide, disconnectRide } from '../services/ride';
+import { busKey, busLabel, departureLabel } from '../services/buses';
+import { reassignQueuedAwards } from '../services/trackerStore';
 import '../css/LiveBusTracker.css';
 
 const POLL_INTERVAL_MS = 15000;
 
-function stopsPassedSince(previousStopId, currentStop, route) {
-    const previousIndex = route.findIndex(stop => stop.locationId === previousStopId);
-    const currentIndex = route.findIndex(stop => stop.locationId === currentStop.locationId);
-
-    if (previousIndex >= 0 && currentIndex > previousIndex) {
-        return route.slice(previousIndex + 1, currentIndex + 1);
-    }
-
-    return [currentStop];
-}
-
-function findJourneyEndpointStops(route, origin, destination) {
-    const normalize = value => value.trim().replace(/\s+/g, ' ').toLowerCase();
-    const matchesLocation = (stop, query) => {
-        const normalizedQuery = normalize(query);
-        return [stop.name, stop.regionName]
-            .some(name => name && normalize(name).includes(normalizedQuery));
-    };
-    const originIndex = route.findIndex(stop => matchesLocation(stop, origin));
-    const destinationIndex = route.findIndex(
-        (stop, index) => index > originIndex && matchesLocation(stop, destination),
-    );
-
-    if (originIndex < 0 || destinationIndex < 0) {
-        return { endpointStops: [], towns: [] };
-    }
-
-    const routeStops = route.slice(originIndex, destinationIndex + 1);
-    const towns = new Set([origin.trim().toLowerCase(), destination.trim().toLowerCase()]);
-    routeStops.forEach(stop => {
-        const town = stop.regionName?.trim();
-        if (town) towns.add(town.toLowerCase());
-    });
-
-    return {
-        endpointStops: [
-            { ...route[originIndex], name: origin.trim() },
-            { ...route[destinationIndex], name: destination.trim() },
-        ],
-        towns: [...towns],
-    };
-}
-
-function uniqueTownNames(towns) {
-    const uniqueTowns = new Map();
-    towns.forEach(town => {
-        const trimmedTown = town.trim();
-        const normalizedTown = trimmedTown.toLowerCase();
-        if (trimmedTown && !uniqueTowns.has(normalizedTown)) {
-            uniqueTowns.set(normalizedTown, trimmedTown);
-        }
-    });
-    return [...uniqueTowns.values()];
-}
-
-function LiveBusTracker({ origin, destination, onSelectedBusChange }) {
+function LiveBusTracker({ origin, destination, tracker, updateTracker, onSelectedBusChange, onBusyChange }) {
     const [buses, setBuses] = useState([]);
-    const [selectedVehicleId, setSelectedVehicleId] = useState('');
+    const [selectedVehicleId, setSelectedVehicleId] = useState(tracker.ride ? busKey(tracker.ride) : '');
     const [loading, setLoading] = useState(true);
     const [feedback, setFeedback] = useState(null);
-    const [isTracking, setIsTracking] = useState(false);
-    const [pendingStops, setPendingStops] = useState([]);
-    const [pendingJourneys, setPendingJourneys] = useState([]);
-    const [isAddingStamps, setIsAddingStamps] = useState(false);
-    const selectedVehicleIdRef = useRef('');
-    const trackingCursorRef = useRef(null);
-    const isTrackingRef = useRef(false);
-    const pollRef = useRef(null);
-    const journeyCounterRef = useRef(0);
+    const [busy, setBusy] = useState(false);
+    const busyRef = useRef(false);
+    const trackerRef = useRef(tracker);
+    const selectedRef = useRef(selectedVehicleId);
+    useEffect(() => {
+        trackerRef.current = tracker;
+        selectedRef.current = selectedVehicleId;
+    }, [tracker, selectedVehicleId]);
+    useEffect(() => {
+        onBusyChange?.(busy);
+        return () => onBusyChange?.(false);
+    }, [busy, onBusyChange]);
 
     useEffect(() => {
         let active = true;
         let polling = false;
-
-        async function pollLiveBuses() {
+        async function poll() {
             if (polling) return;
             polling = true;
-
             try {
-                const liveBuses = await getLiveBuses(origin, destination);
+                const detailsTripUid = selectedRef.current.includes(':') ? selectedRef.current.split(':').slice(1).join(':') : '';
+                const liveBuses = await getLiveBuses(origin, destination, trackerRef.current.ride?.tripUid, detailsTripUid);
                 if (!active) return;
-                setBuses(liveBuses ?? []);
-                setLoading(false);
-
-                const selectedBus = liveBuses?.find(
-                    bus => String(bus.vehicleId) === selectedVehicleIdRef.current,
-                );
-                onSelectedBusChange?.(selectedBus ?? null);
-                if (!selectedBus || (!selectedBus.currentStop && !selectedBus.nextStop)) return;
-
-                const currentStop = selectedBus.currentStop;
-                const nextStop = selectedBus.nextStop;
-                const tripKey = `${selectedBus.vehicleId}:${selectedBus.tripUid}`;
-                const cursor = trackingCursorRef.current;
-
-                if (!cursor || cursor.tripKey !== tripKey) {
-                    trackingCursorRef.current = {
-                        tripKey,
-                        currentStopId: currentStop?.locationId ?? null,
-                        nextStop,
-                        processedStopIds: new Set(),
-                        journeyId: cursor?.journeyId ?? ++journeyCounterRef.current,
-                        endpointStops: cursor?.endpointStops ?? [],
-                        journey: cursor?.journey ?? null,
-                    };
-                    if (isTrackingRef.current) {
-                        setFeedback({
-                            type: 'status',
-                            text: `Tracking Bus ${selectedBus.vehicleId} from ${origin} to ${destination}.`,
-                        });
+                setBuses(liveBuses);
+                setFeedback(previous => previous?.source === 'feed' ? null : previous);
+                const selected = liveBuses.find(bus => busKey(bus) === selectedRef.current);
+                onSelectedBusChange?.(selected ?? null);
+                const ride = trackerRef.current.ride;
+                if (ride) {
+                    if (!selected || selected.tripUid !== ride.tripUid) {
+                        setFeedback({ source: 'feed', type: 'status',
+                            text: 'This ride is no longer in the live feed. You can still end it and save observed stops.' });
+                    } else {
+                        updateTracker(current => ({ ...current,
+                            ride: current.ride ? advanceRide(current.ride, selected) : null }));
                     }
-                    return;
-                }
-
-                const currentStopChanged = currentStop
-                    && cursor.currentStopId !== null
-                    && cursor.currentStopId !== currentStop.locationId;
-                const nextStopChanged = cursor.nextStop
-                    && nextStop
-                    && cursor.nextStop.locationId !== nextStop.locationId;
-                const passedStops = currentStopChanged
-                    ? stopsPassedSince(cursor.currentStopId, currentStop, selectedBus.route ?? [])
-                    : nextStopChanged
-                        ? [cursor.nextStop]
-                        : [];
-                const unrecordedPassedStops = passedStops.filter(
-                    stop => !cursor.processedStopIds.has(stop.locationId),
-                );
-
-                if (unrecordedPassedStops.length === 0) {
-                    trackingCursorRef.current = {
-                        tripKey,
-                        currentStopId: currentStop?.locationId ?? cursor.currentStopId,
-                        nextStop,
-                        processedStopIds: cursor.processedStopIds,
-                        journeyId: cursor.journeyId,
-                        endpointStops: cursor.endpointStops,
-                        journey: cursor.journey,
-                    };
-                    return;
-                }
-
-                if (!isTrackingRef.current) {
-                    trackingCursorRef.current = {
-                        tripKey,
-                        currentStopId: currentStop?.locationId ?? cursor.currentStopId,
-                        nextStop,
-                        processedStopIds: cursor.processedStopIds,
-                        journeyId: cursor.journeyId,
-                        endpointStops: cursor.endpointStops,
-                        journey: cursor.journey,
-                    };
-                    return;
-                }
-
-                for (const stop of unrecordedPassedStops) {
-                    cursor.processedStopIds.add(stop.locationId);
-                }
-
-                setPendingStops(pending => {
-                    const queuedLocationIds = new Set(pending.map(stop => stop.locationId));
-                    const newStops = unrecordedPassedStops.reduce((stops, stop) => {
-                        if (queuedLocationIds.has(stop.locationId)) return stops;
-
-                        queuedLocationIds.add(stop.locationId);
-                        stops.push({
-                            ...stop,
-                            queueId: `${tripKey}:${cursor.journeyId}:${stop.locationId}`,
-                        });
-                        return stops;
-                    }, []);
-                    return [...pending, ...newStops];
-                });
-                trackingCursorRef.current = {
-                    tripKey,
-                    currentStopId: currentStop?.locationId ?? trackingCursorRef.current.currentStopId,
-                    nextStop,
-                    processedStopIds: cursor.processedStopIds,
-                    journeyId: cursor.journeyId,
-                    endpointStops: cursor.endpointStops,
-                    journey: cursor.journey,
-                };
-                if (active) {
-                    setFeedback({
-                        type: 'status',
-                        text: `${unrecordedPassedStops.length} passed ${unrecordedPassedStops.length === 1 ? 'stop is' : 'stops are'} ready to add to your passport.`,
-                    });
                 }
             } catch (error) {
-                if (active) {
-                    setLoading(false);
-                    setFeedback({ type: 'error', text: error.message || 'Could not update live buses.' });
-                }
+                if (active) setFeedback({ source: 'feed', type: 'error', text: error.message || 'Could not update live buses.' });
             } finally {
                 polling = false;
+                if (active) setLoading(false);
             }
         }
+        poll();
+        const interval = window.setInterval(poll, POLL_INTERVAL_MS);
+        return () => { active = false; window.clearInterval(interval); };
+    }, [origin, destination, selectedVehicleId, tracker.ride?.tripUid, updateTracker, onSelectedBusChange]);
 
-        pollRef.current = pollLiveBuses;
-        pollLiveBuses();
-        const intervalId = window.setInterval(pollLiveBuses, POLL_INTERVAL_MS);
+    const selectedBus = buses.find(bus => busKey(bus) === selectedVehicleId);
 
-        return () => {
-            active = false;
-            window.clearInterval(intervalId);
-            pollRef.current = null;
-        };
-    }, [origin, destination, onSelectedBusChange]);
-
-    function selectBus(event) {
-        const vehicleId = event.target.value;
-        selectedVehicleIdRef.current = vehicleId;
-        trackingCursorRef.current = null;
-        isTrackingRef.current = false;
-        setIsTracking(false);
-        setSelectedVehicleId(vehicleId);
-        onSelectedBusChange?.(buses.find(bus => String(bus.vehicleId) === vehicleId) ?? null);
-        setFeedback(vehicleId ? { type: 'status', text: 'Waiting for this bus’s live stop.' } : null);
-        pollRef.current?.();
+    async function toggleTracking() {
+        if (busyRef.current) return;
+        try {
+            if (trackerRef.current.ride) {
+                busyRef.current = true;
+                setBusy(true);
+                let latest = null;
+                let warning = '';
+                try {
+                    const ride = trackerRef.current.ride;
+                    const liveBuses = await getLiveBuses(origin, destination, ride.tripUid, ride.tripUid);
+                    latest = liveBuses.find(bus => String(bus.vehicleId) === ride.vehicleId && bus.tripUid === ride.tripUid) ?? null;
+                    if (!latest) {
+                        warning = 'The bus left the live feed. Only previously observed stops were counted.';
+                    }
+                } catch {
+                    warning = 'Could not refresh the live position. Only previously observed stops were counted.';
+                }
+                let completed;
+                updateTracker(current => {
+                    completed = disconnectRide(current, latest);
+                    return completed;
+                });
+                trackerRef.current = completed;
+                await savePendingAwards(warning);
+                return;
+            }
+            if (!selectedBus) return;
+            busyRef.current = true;
+            setBusy(true);
+            await ensureCurrentPassport();
+            const ownerToken = currentGuestToken();
+            if (trackerRef.current.ownerToken && trackerRef.current.ownerToken !== ownerToken
+                && (trackerRef.current.stops.length || trackerRef.current.journeys.length)) {
+                throw new Error('These unsaved awards belong to an expired passport. Discard them before starting a new ride.');
+            }
+            const ride = startRide(selectedBus, origin, destination, crypto.randomUUID());
+            updateTracker(current => ({ ...current, ownerToken, ride }));
+            setFeedback({ type: 'status', text: 'Tracking your ride. Only observed stops will be recorded.' });
+        } catch (error) {
+            setFeedback({ type: 'error', text: error.message });
+        } finally {
+            busyRef.current = false;
+            setBusy(false);
+        }
     }
 
-    function toggleTracking() {
-        if (!selectedBus) return;
-
-        if (isTrackingRef.current) {
-            isTrackingRef.current = false;
-            setIsTracking(false);
-            const cursor = trackingCursorRef.current;
-            if (cursor.journey) {
-                const { requestKey, ...journey } = cursor.journey;
-                setPendingJourneys(journeys => [
-                    ...journeys,
-                    { ...journey, journeyKey: requestKey },
-                ]);
+    async function savePendingAwards(warning = '') {
+        try {
+            const { userId } = await ensureCurrentPassport();
+            if (trackerRef.current.ownerToken !== currentGuestToken()) {
+                if (!window.confirm('These unsaved awards were started on another guest passport. Move them to your current passport?')) {
+                    throw new Error('Unsaved awards still belong to the previous guest passport.');
+                }
+                updateTracker(current => reassignQueuedAwards(current, currentGuestToken()));
             }
-            setFeedback({
-                type: 'status',
-                text: 'Ride ended. Add the origin, destination and passed stops to your passport when you are ready.',
-            });
-            return;
+            // Keep stable operation IDs until the server acknowledges each write.
+            // Retrying a committed write with a lost response cannot award it twice.
+            const pendingStops = [...trackerRef.current.stops];
+            for (let index = 0; index < pendingStops.length; index += 50) {
+                const batch = pendingStops.slice(index, index + 50);
+                await recordLocationVisits(userId, batch);
+                const acknowledged = new Set(batch.map(stop => stop.operationId));
+                updateTracker(current => ({ ...current,
+                    stops: current.stops.filter(stop => !acknowledged.has(stop.operationId)) }));
+            }
+            for (const journey of [...trackerRef.current.journeys]) {
+                if (!journey.completionRecorded) {
+                    const details = { ...journey };
+                    delete details.townsToStamp;
+                    delete details.completionRecorded;
+                    await recordCompletedJourney(userId, details);
+                    updateTracker(current => ({ ...current, journeys: current.journeys.map(item =>
+                        item.journeyKey === journey.journeyKey ? { ...item, completionRecorded: true } : item) }));
+                }
+                for (const town of journey.townsToStamp) {
+                    const operationId = `${journey.journeyKey}:town:${journey.towns.indexOf(town)}`;
+                    await recordTownVisit(userId, town, operationId);
+                    updateTracker(current => ({ ...current, journeys: current.journeys.map(item =>
+                        item.journeyKey === journey.journeyKey
+                            ? { ...item, townsToStamp: item.townsToStamp.filter(name => name !== town) } : item) }));
+                }
+                updateTracker(current => ({ ...current, journeys: current.journeys.filter(item => item.journeyKey !== journey.journeyKey) }));
+            }
+            setFeedback({ type: 'success', text: `${warning ? `${warning} ` : ''}Your observed stops and journey statistics were saved.` });
+        } catch (error) {
+            setFeedback({ type: 'error', text: `${warning ? `${warning} ` : ''}${error.message || 'Could not save awards.'} Unsaved awards are retained; you can try again.` });
         }
-
-        const tripKey = `${selectedBus.vehicleId}:${selectedBus.tripUid}`;
-        const journeyDetails = findJourneyEndpointStops(selectedBus.route ?? [], origin, destination);
-        const requestKey = crypto.randomUUID();
-        trackingCursorRef.current = {
-            tripKey,
-            currentStopId: selectedBus.currentStop?.locationId ?? null,
-            nextStop: selectedBus.nextStop,
-            processedStopIds: new Set(),
-            journeyId: ++journeyCounterRef.current,
-            endpointStops: journeyDetails.endpointStops,
-            journey: {
-                requestKey,
-                originLocationId: journeyDetails.endpointStops[0]?.locationId,
-                destinationLocationId: journeyDetails.endpointStops[1]?.locationId,
-                originName: origin,
-                destinationName: destination,
-                townsToStamp: uniqueTownNames([origin, destination]),
-                towns: journeyDetails.towns,
-            },
-        };
-        isTrackingRef.current = true;
-        setIsTracking(true);
-        setFeedback({
-            type: 'status',
-            text: `Tracking Bus ${selectedBus.vehicleId} from ${origin} to ${destination}.`,
-        });
-        pollRef.current?.();
     }
 
     async function addStampsToPassport() {
-        if (isAddingStamps || isTracking || (pendingStops.length === 0 && pendingJourneys.length === 0)) return;
-
-        setIsAddingStamps(true);
-        let addedCount = 0;
-        let recordingJourneys = false;
-
+        if (busyRef.current || trackerRef.current.ride) return;
+        busyRef.current = true;
+        setBusy(true);
         try {
-            const { userId } = await ensureCurrentPassport();
-            const uniqueStops = [...new Map(
-                pendingStops.map(stop => [stop.locationId, stop]),
-            ).values()];
-
-            for (const stop of uniqueStops) {
-                await recordLocationVisit(userId, stop.locationId, stop.name);
-                setPendingStops(current => current.filter(item => item.locationId !== stop.locationId));
-                addedCount++;
-            }
-
-            recordingJourneys = true;
-            for (const journey of pendingJourneys) {
-                const pendingTownNames = journey.townsToStamp ?? [];
-                for (const townName of pendingTownNames) {
-                    await recordTownVisit(userId, townName);
-                    setPendingJourneys(current => current.map(item => (
-                        item.journeyKey === journey.journeyKey
-                            ? {
-                                ...item,
-                                townsToStamp: item.townsToStamp.filter(town => town !== townName),
-                            }
-                            : item
-                    )));
-                }
-                const { journeyKey, ...details } = journey;
-                delete details.townsToStamp;
-                await recordCompletedJourney(userId, { ...details, journeyKey });
-                setPendingJourneys(current => current.filter(item => item.journeyKey !== journeyKey));
-            }
-
-            setFeedback({
-                type: 'success',
-                text: `Added ${addedCount} ${addedCount === 1 ? 'stop stamp' : 'stop stamps'} and ${pendingJourneys.length} ${pendingJourneys.length === 1 ? 'route' : 'routes'} to your passport.`,
-            });
-        } catch (error) {
-            setFeedback({
-                type: 'error',
-                text: recordingJourneys
-                    ? `Stop stamps were added, but route statistics could not be saved: ${error.message || 'Please try again.'}`
-                    : addedCount > 0
-                    ? `Added stamps for ${addedCount} stops, but could not add the rest: ${error.message || 'Please try again.'}`
-                    : error.message || 'Could not add stamps to your passport.',
-            });
+            await savePendingAwards();
         } finally {
-            setIsAddingStamps(false);
+            busyRef.current = false;
+            setBusy(false);
         }
     }
 
-    const selectedBus = buses.find(bus => String(bus.vehicleId) === selectedVehicleId);
+    function selectBus(event) {
+        setSelectedVehicleId(event.target.value);
+        onSelectedBusChange?.(buses.find(bus => busKey(bus) === event.target.value) ?? null);
+    }
 
     return (
         <section className="live-bus-tracker" aria-labelledby="live-bus-title">
             <div className="live-bus-heading">
                 <p className="journey-eyebrow">EMBER LIVE</p>
-                <h2 id="live-bus-title">Buses serving this route</h2>
+                <h2 id="live-bus-title">{origin && destination ? 'Buses serving this route' : 'Soonest departures'}</h2>
             </div>
-
             <label className="live-bus-select-label" htmlFor="live-bus-select">Live buses</label>
-            <select
-                id="live-bus-select"
-                className="live-bus-select"
-                value={selectedVehicleId}
-                onChange={selectBus}
-                disabled={loading || buses.length === 0}
-            >
+            <select id="live-bus-select" className="live-bus-select" value={selectedVehicleId}
+                onChange={selectBus} disabled={loading || buses.length === 0 || Boolean(tracker.ride) || busy}>
                 <option value="">{loading ? 'Loading buses…' : 'Choose a bus'}</option>
-                {buses.map(bus => (
-                    <option key={bus.vehicleId} value={bus.vehicleId}>
-                        {`Bus ${bus.vehicleId} · ${origin} → ${destination}`}
-                    </option>
-                ))}
+                {tracker.ride && !selectedBus && <option value={busKey(tracker.ride)}>Tracked bus unavailable</option>}
+                {buses.map(bus => <option key={busKey(bus)} value={busKey(bus)}>
+                    {busLabel(bus)}
+                </option>)}
             </select>
-
-            {selectedBus && (
-                <p className="live-bus-stops">
-                    {selectedBus.currentStop?.name || 'Current stop unavailable'}
-                    {selectedBus.nextStop?.name ? ` → ${selectedBus.nextStop.name}` : ''}
-                </p>
-            )}
-            {selectedBus && (
-                <button
-                    className="live-bus-track-button"
-                    type="button"
-                    onClick={toggleTracking}
-                >
-                    {isTracking ? 'I got off this bus' : "I'm getting on this bus"}
-                </button>
-            )}
-            {!isTracking && (pendingStops.length > 0 || pendingJourneys.length > 0) && (
-                <button
-                    className="live-bus-add-stamps-button"
-                    type="button"
-                    onClick={addStampsToPassport}
-                    disabled={isAddingStamps}
-                >
-                    {isAddingStamps ? 'Adding stamps…' : `Add stamps to passport (${pendingStops.length + pendingJourneys.length})`}
-                </button>
-            )}
-            {feedback && (
-                <p className={`live-bus-feedback is-${feedback.type}`} role={feedback.type === 'error' ? 'alert' : 'status'}>
-                    {feedback.text}
-                </p>
-            )}
-            {!loading && buses.length === 0 && !feedback && (
-                <p className="live-bus-feedback">No active Ember buses serve this route right now.</p>
-            )}
+            {selectedBus && <p className="live-bus-stops">
+                {selectedBus.currentStop?.name || 'Current stop unavailable'}
+                {selectedBus.nextStop?.name ? ` → ${selectedBus.nextStop.name}` : ''}
+            </p>}
+            {selectedBus && !selectedBus.routeDetailsLoaded && <p role="status">Loading the full route…</p>}
+            {selectedBus && <p className="live-bus-stops">
+                {departureLabel(selectedBus)}{selectedBus.departureStop?.name ? ` from ${selectedBus.departureStop.name}` : ''}
+                {selectedBus.upcomingTrip ? ' · Next trip; boarding is available when the trip becomes active.' : ''}
+            </p>}
+            {(selectedBus || tracker.ride) && <button className="live-bus-track-button" type="button"
+                onClick={toggleTracking} disabled={busy || (!tracker.ride && (selectedBus?.upcomingTrip || !selectedBus?.routeDetailsLoaded))}>
+                {tracker.ride ? 'I got off this bus' : "I'm getting on this bus"}
+            </button>}
+            {!tracker.ride && (tracker.stops.length > 0 || tracker.journeys.length > 0) &&
+                <button className="live-bus-add-stamps-button" type="button" onClick={addStampsToPassport} disabled={busy}>
+                    {busy ? 'Saving…' : `Add stamps to passport (${tracker.stops.length + tracker.journeys.length})`}
+                </button>}
+            {feedback && <p className={`live-bus-feedback is-${feedback.type}`} role={feedback.type === 'error' ? 'alert' : 'status'}>
+                {feedback.text}
+            </p>}
+            {!loading && buses.length === 0 && feedback?.type !== 'error' &&
+                <p className="live-bus-feedback">{origin && destination
+                    ? 'No active or upcoming Ember buses serve this route right now.'
+                    : 'No upcoming Ember departures are available right now.'}</p>}
         </section>
     );
 }

@@ -21,7 +21,10 @@ public class UserService {
 
 	@Transactional
 	public User createUser(String name) {
-		User user = userRepository.save(new User(name));
+		if (name == null || name.isBlank() || name.length() > 100) {
+			throw new IllegalArgumentException("Name must contain between 1 and 100 characters");
+		}
+		User user = userRepository.save(new User(name.trim()));
 		passportRepository.save(new Passport(user));
 		return user;
 	}
@@ -32,6 +35,6 @@ public class UserService {
 
 	public User getUser(Long userId) {
 		return userRepository.findById(userId)
-				.orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+				.orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("User not found: " + userId));
 	}
 }

@@ -3,20 +3,23 @@ package com.goember.hackathon.passport;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.goember.hackathon.ember.EmberClient;
+import com.goember.hackathon.ember.EmberApiException;
 import com.goember.hackathon.stamp.PassportStamp;
 import com.goember.hackathon.stamp.PassportStampRepository;
 import com.goember.hackathon.stamp.Stamp;
 import com.goember.hackathon.stamp.StampService;
+import com.goember.hackathon.stamp.StampRepository;
 import com.goember.hackathon.user.User;
 import com.goember.hackathon.user.UserRepository;
 
@@ -30,27 +33,37 @@ public class PassportService {
 	private final PassportRepository passportRepository;
 	private final UserRepository userRepository;
 	private final StampService stampService;
+	private final StampRepository stampRepository;
 	private final PassportStampRepository passportStampRepository;
 	private final PassportJourneyRepository passportJourneyRepository;
 	private final EmberClient emberClient;
+	private final PassportVisitRepository visitRepository;
+	private final TransactionTemplate writeTransaction;
 
 	public PassportService(
 			PassportRepository passportRepository,
 			UserRepository userRepository,
 			StampService stampService,
+			StampRepository stampRepository,
 			PassportStampRepository passportStampRepository,
 			PassportJourneyRepository passportJourneyRepository,
-			EmberClient emberClient) {
+			EmberClient emberClient,
+			PassportVisitRepository visitRepository,
+			PlatformTransactionManager transactionManager) {
 		this.passportRepository = passportRepository;
 		this.userRepository = userRepository;
 		this.stampService = stampService;
+		this.stampRepository = stampRepository;
 		this.passportStampRepository = passportStampRepository;
 		this.passportJourneyRepository = passportJourneyRepository;
 		this.emberClient = emberClient;
+		this.visitRepository = visitRepository;
+		this.writeTransaction = new TransactionTemplate(transactionManager);
 	}
 
 	@Transactional
 	public Passport getOrCreatePassport(Long userId) {
+		lockUser(userId);
 		return findOrCreatePassport(userId);
 	}
 
@@ -65,30 +78,64 @@ public class PassportService {
 		return stampOwners * 100.0 / totalUsers;
 	}
 
-	@Transactional
 	public PassportStamp recordLocationVisit(Long userId, long emberLocationId) {
 		return recordLocationVisit(userId, emberLocationId, null);
 	}
 
-	@Transactional
 	public PassportStamp recordLocationVisit(Long userId, long emberLocationId, String locationName) {
-		Passport passport = findOrCreatePassport(userId);
-		Stamp stamp = locationName == null || locationName.isBlank()
-				? stampService.getOrCreateForLocation(emberLocationId)
-				: stampService.getOrCreateForLocation(emberLocationId, locationName);
-
-		return recordStampVisit(passport, stamp);
+		return recordLocationVisit(userId, emberLocationId, locationName, null);
 	}
 
-	@Transactional
+	public PassportStamp recordLocationVisit(Long userId, long emberLocationId, String locationName, String operationId) {
+		if (emberLocationId <= 0) throw new IllegalArgumentException("Location ID must be positive");
+		Stamp stamp = stampService.getOrCreateForLocation(emberLocationId);
+		return writeTransaction.execute(status -> {
+			lockUser(userId);
+			return recordStampVisit(findOrCreatePassport(userId), stamp, operationId);
+		});
+	}
+
 	public PassportStamp recordTownVisit(Long userId, String townName) {
-		Passport passport = findOrCreatePassport(userId);
-		Stamp stamp = stampService.getOrCreateForTown(townName);
-		return recordStampVisit(passport, stamp);
+		return recordTownVisit(userId, townName, null);
 	}
 
-	private PassportStamp recordStampVisit(Passport passport, Stamp stamp) {
-		return passport.getStamps().stream()
+	public void recordLocationVisits(Long userId, List<LocationVisit> visits) {
+		if (visits == null || visits.isEmpty() || visits.size() > 50 || visits.stream().anyMatch(visit ->
+				visit == null || visit.locationId() <= 0 || visit.operationId() == null || visit.operationId().isBlank())) {
+			throw new IllegalArgumentException("Provide between 1 and 50 location visits with operation IDs");
+		}
+		var stamps = stampService.getOrCreateForLocations(visits.stream().map(LocationVisit::locationId).toList());
+		writeTransaction.execute(status -> {
+			lockUser(userId);
+			Passport passport = findOrCreatePassport(userId);
+			for (var visit : visits) recordStampVisit(passport, stamps.get(visit.locationId()), visit.operationId());
+			return null;
+		});
+	}
+
+	public record LocationVisit(long locationId, String operationId) {}
+
+	public PassportStamp recordTownVisit(Long userId, String townName, String operationId) {
+		Stamp stamp = stampService.getOrCreateForTown(townName);
+		return writeTransaction.execute(status -> {
+			lockUser(userId);
+			return recordStampVisit(findOrCreatePassport(userId), stamp, operationId);
+		});
+	}
+
+	private PassportStamp recordStampVisit(Passport passport, Stamp stamp, String operationId) {
+		if (operationId != null) {
+			var prior = visitRepository.findByPassport_PassportIdAndOperationId(passport.getPassportId(), operationId);
+			if (prior.isPresent()) {
+				if (!prior.get().getStampKey().equals(stamp.getStampKey())) {
+					throw new org.springframework.web.server.ResponseStatusException(
+							org.springframework.http.HttpStatus.CONFLICT, "Operation ID already used for another stamp");
+				}
+				return passport.getStamps().stream().filter(entry -> entry.getStamp().getStampKey().equals(stamp.getStampKey()))
+						.findFirst().orElseThrow();
+			}
+		}
+		PassportStamp result = passport.getStamps().stream()
 				.filter(entry -> entry.getStamp().getStampKey().equals(stamp.getStampKey()))
 				.findFirst()
 				.map(passportStamp -> {
@@ -100,6 +147,8 @@ public class PassportService {
 					passportRepository.save(passport);
 					return createdStamp;
 				});
+		if (operationId != null) visitRepository.save(new PassportVisit(passport, operationId, stamp.getStampKey()));
+		return result;
 	}
 
 	@Transactional(readOnly = true)
@@ -113,30 +162,32 @@ public class PassportService {
 		return stampOwners * 100.0 / totalUsers;
 	}
 
-	@Transactional
 	public void recordCompletedJourney(
 			Long userId,
 			String journeyKey,
+			String routeNumber,
 			long originLocationId,
 			long destinationLocationId,
 			String originName,
 			String destinationName,
 			List<String> towns) {
-		Passport passport = findOrCreatePassport(userId);
-		if (passportJourneyRepository
-				.findByPassport_PassportIdAndJourneyKey(passport.getPassportId(), journeyKey)
-				.isPresent()) {
-			return;
+		if (originLocationId <= 0 || destinationLocationId <= 0) {
+			throw new IllegalArgumentException("A journey requires positive location IDs");
 		}
-
-		Double distanceKilometers = findDistanceKilometers(
-				originLocationId,
-				destinationLocationId,
-				originName,
-				destinationName);
+		if (routeNumber != null && (routeNumber.isBlank() || routeNumber.length() > 32)) {
+			throw new IllegalArgumentException("Bus number must contain between 1 and 32 characters");
+		}
+		String normalizedRouteNumber = routeNumber == null ? null : routeNumber.trim().toUpperCase(Locale.ROOT);
+		boolean alreadyRecorded = writeTransaction.execute(status -> {
+			lockUser(userId);
+			Passport passport = findOrCreatePassport(userId);
+			return passportJourneyRepository.findByPassport_PassportIdAndJourneyKey(passport.getPassportId(), journeyKey).isPresent();
+		});
+		if (alreadyRecorded) return;
+		Double distanceKilometers = findDistanceKilometers(originLocationId, destinationLocationId);
 		if (distanceKilometers == null) {
 			logger.warn(
-					"Could not estimate distance for completed journey {} from {} to {}; route and town totals will still be recorded",
+					"Could not estimate distance for completed journey {} from {} to {}; the bus number will still be recorded",
 					journeyKey,
 					originName,
 					destinationName);
@@ -148,11 +199,14 @@ public class PassportService {
 				.map(town -> town.toLowerCase(Locale.ROOT))
 				.collect(Collectors.toSet());
 
-		passportJourneyRepository.save(new PassportJourney(
-				passport,
-				journeyKey,
-				distanceKilometers,
-				normalizedTowns));
+		writeTransaction.executeWithoutResult(status -> {
+			lockUser(userId);
+			Passport passport = findOrCreatePassport(userId);
+			if (passportJourneyRepository.findByPassport_PassportIdAndJourneyKey(passport.getPassportId(), journeyKey).isEmpty()) {
+				passportJourneyRepository.save(new PassportJourney(passport, journeyKey, normalizedRouteNumber,
+						distanceKilometers, normalizedTowns));
+			}
+		});
 	}
 
 	@Transactional(readOnly = true)
@@ -163,41 +217,39 @@ public class PassportService {
 		Double totalDistanceKilometers = allDistancesAvailable
 				? journeys.stream().mapToDouble(PassportJourney::getDistanceKilometers).sum()
 				: null;
-		long townsVisited = journeys.stream()
-				.flatMap(journey -> journey.getTowns().stream())
+		long townsVisited = passportStampRepository.findAllByPassport_PassportId(passportId).stream()
+				.map(entry -> entry.getStamp().getRegionName())
+				.filter(town -> town != null && !town.isBlank())
+				.map(town -> town.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT))
 				.distinct()
 				.count();
-
-		return new TravelStats(totalDistanceKilometers, journeys.size(), townsVisited);
+		long busNumbersRidden = journeys.stream().map(PassportJourney::getRouteNumber)
+				.filter(number -> number != null && !number.isBlank()).distinct().count();
+		return new TravelStats(totalDistanceKilometers, busNumbersRidden, townsVisited);
 	}
 
-	private Map<String, Object> findLocation(long locationId, String locationName) {
-		Map<String, Object> location = emberClient.findLocationById(locationId).orElse(null);
-		if (location != null || locationName == null || locationName.isBlank()) {
-			return location;
-		}
+	private Map<String, Object> findLocation(long locationId) {
+		return emberClient.findLocationById(locationId).orElse(null);
+	}
 
-		List<Map<String, Object>> matches = emberClient.searchLocations(locationName, 50, "STOP_POINT");
-		if (matches == null) {
+	private Double findDistanceKilometers(long originLocationId, long destinationLocationId) {
+		var originStamp = stampRepository.findByLocationId(originLocationId);
+		var destinationStamp = stampRepository.findByLocationId(destinationLocationId);
+		if (originStamp.isPresent() && destinationStamp.isPresent()
+				&& originStamp.get().getLatitude() != null && originStamp.get().getLongitude() != null
+				&& destinationStamp.get().getLatitude() != null && destinationStamp.get().getLongitude() != null) {
+			return distanceInKilometers(originStamp.get().getLatitude(), originStamp.get().getLongitude(),
+					destinationStamp.get().getLatitude(), destinationStamp.get().getLongitude());
+		}
+		Map<String, Object> origin;
+		Map<String, Object> destination;
+		try {
+			origin = findLocation(originLocationId);
+			destination = findLocation(destinationLocationId);
+		} catch (EmberApiException exception) {
+			logger.warn("Could not resolve journey endpoint coordinates from Ember: {}", exception.getMessage());
 			return null;
 		}
-
-		String normalizedName = locationName.trim().toLowerCase(Locale.ROOT);
-		return matches.stream()
-				.filter(Objects::nonNull)
-				.filter(candidate -> normalizedName.equals(normalize(candidate.get("name")))
-						|| normalizedName.equals(normalize(candidate.get("region_name"))))
-				.findFirst()
-				.orElse(null);
-	}
-
-	private Double findDistanceKilometers(
-			long originLocationId,
-			long destinationLocationId,
-			String originName,
-			String destinationName) {
-		Map<String, Object> origin = findLocation(originLocationId, originName);
-		Map<String, Object> destination = findLocation(destinationLocationId, destinationName);
 		if (origin == null || destination == null) {
 			return null;
 		}
@@ -214,15 +266,12 @@ public class PassportService {
 		return distanceInKilometers(originLatitude, originLongitude, destinationLatitude, destinationLongitude);
 	}
 
-	private String normalize(Object value) {
-		return value == null ? "" : value.toString().trim().toLowerCase(Locale.ROOT);
-	}
-
 	private Double getCoordinate(Map<String, Object> location, String coordinateName) {
 		Object value = location.get(coordinateName);
 		if (value instanceof Number number) {
 			double coordinate = number.doubleValue();
-			if (Double.isFinite(coordinate)) {
+			double max = coordinateName.equals("lat") ? 90 : 180;
+			if (Double.isFinite(coordinate) && Math.abs(coordinate) <= max) {
 				return coordinate;
 			}
 		}
@@ -238,6 +287,7 @@ public class PassportService {
 				* Math.cos(Math.toRadians(latitude2))
 				* Math.sin(longitudeDifference / 2)
 				* Math.sin(longitudeDifference / 2);
+		haversine = Math.max(0, Math.min(1, haversine));
 		return earthRadiusKilometers * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 	}
 
@@ -251,6 +301,10 @@ public class PassportService {
 				});
 	}
 
-	public record TravelStats(Double totalDistanceKilometers, long routesTravelled, long townsVisited) {
+	private void lockUser(Long userId) {
+		userRepository.findForUpdate(userId).orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
+	}
+
+	public record TravelStats(Double totalDistanceKilometers, long busNumbersRidden, long townsVisited) {
 	}
 }
