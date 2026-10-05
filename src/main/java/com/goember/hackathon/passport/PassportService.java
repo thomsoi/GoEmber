@@ -30,6 +30,8 @@ import jakarta.persistence.EntityNotFoundException;
 public class PassportService {
 
 	private static final Logger logger = LoggerFactory.getLogger(PassportService.class);
+	private static final java.util.regex.Pattern RIDE_OPERATION = java.util.regex.Pattern.compile(
+			"^(.+):(?:stop:\\d+(?::\\d+)?|town:\\d+)$");
 
 	private final PassportRepository passportRepository;
 	private final UserRepository userRepository;
@@ -218,18 +220,40 @@ public class PassportService {
 		Double totalDistanceKilometers = allDistancesAvailable
 				? journeys.stream().mapToDouble(PassportJourney::getDistanceKilometers).sum()
 				: null;
-		// Include canonical stop regions and previously recorded town visits once each.
-		var citiesByKey = new java.util.TreeMap<String, VisitedCity>();
+		var cityNames = new java.util.TreeMap<String, String>();
+		var cityVisits = new java.util.HashMap<String, Set<String>>();
+		var visitsByStamp = visitRepository.findAllByPassport_PassportId(passportId).stream()
+				.collect(Collectors.groupingBy(PassportVisit::getStampKey));
 		for (var entry : passportStampRepository.findAllByPassport_PassportId(passportId)) {
-			String region = entry.getStamp().getRegionName();
-			if (region == null || region.isBlank()) continue;
-			String name = region.trim().replaceAll("\\s+", " ");
+			// Resolve cities from source metadata, including stamps saved by older versions.
+			String name = CityNames.canonical(entry.getStamp().getRegionName());
+			if (name == null) continue;
 			String key = name.toLowerCase(Locale.ROOT);
-			citiesByKey.putIfAbsent(key, new VisitedCity(key, name));
+			cityNames.putIfAbsent(key, name);
+			Set<String> visits = cityVisits.computeIfAbsent(key, ignored -> new java.util.HashSet<>());
+			String stampKey = entry.getStamp().getStampKey();
+			var recorded = visitsByStamp.getOrDefault(stampKey, List.of());
+			for (var visit : recorded) visits.add(cityVisitKey(visit.getOperationId()));
+			// Older internal callers may have recorded visits without operation IDs.
+			for (int index = recorded.size(); index < entry.getVisitCount(); index++) {
+				visits.add("legacy:" + stampKey + ":" + index);
+			}
 		}
-		long busNumbersRidden = journeys.stream().map(PassportJourney::getRouteNumber)
-				.filter(number -> number != null && !number.isBlank()).distinct().count();
-		return new TravelStats(totalDistanceKilometers, busNumbersRidden, List.copyOf(citiesByKey.values()));
+		List<VisitedCity> cities = cityNames.entrySet().stream()
+				.map(city -> new VisitedCity(city.getKey(), city.getValue(), cityVisits.get(city.getKey()).size())).toList();
+		var busCounts = journeys.stream().map(PassportJourney::getRouteNumber)
+				.filter(number -> number != null && !number.isBlank())
+				.collect(Collectors.groupingBy(number -> number, java.util.TreeMap::new, Collectors.counting()));
+		List<RiddenBus> buses = busCounts.entrySet().stream()
+				.map(bus -> new RiddenBus(bus.getKey(), bus.getValue())).toList();
+		return new TravelStats(totalDistanceKilometers, buses.size(), cities, List.copyOf(busCounts.keySet()), buses);
+	}
+
+	private String cityVisitKey(String operationId) {
+		// finishRide uses <journeyKey>:stop:<index>:<locationId> and :town:<index>.
+		// The same city encountered at multiple stops (or saved again as a town) is one visit.
+		var match = RIDE_OPERATION.matcher(operationId);
+		return match.matches() ? "ride:" + match.group(1) : "operation:" + operationId;
 	}
 
 	private Map<String, Object> findLocation(long locationId) {
@@ -296,9 +320,11 @@ public class PassportService {
 		userRepository.findForUpdate(userId).orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 	}
 
-	public record VisitedCity(String key, String name) {}
+	public record VisitedCity(String key, String name, long visitCount) {}
+	public record RiddenBus(String routeNumber, long rideCount) {}
 
-	public record TravelStats(Double totalDistanceKilometers, long busNumbersRidden, List<VisitedCity> cities) {
+	public record TravelStats(Double totalDistanceKilometers, long busNumbersRidden, List<VisitedCity> cities,
+			List<String> busNumbers, List<RiddenBus> buses) {
 		public long townsVisited() {
 			return cities.size();
 		}

@@ -7,13 +7,13 @@ function Passport({
     username = 'Guest',
     stamps = [],
     busNumbersRidden = 0,
+    buses = [],
     cities = [],
     distanceTravelledKm = 0,
 }) {
     const [currentPage, setCurrentPage] = useState(0);
     const [section, setSection] = useState('stamps');
-    const showingCities = section === 'cities';
-    const entries = showingCities ? cities : stamps;
+    const entries = section === 'buses' ? buses : section === 'cities' ? cities : stamps;
     const pageCount = Math.max(1, Math.ceil(entries.length / PASSPORT_PAGE_SIZE));
     const stampsCollected = stamps.length;
 
@@ -75,7 +75,17 @@ function Passport({
                                 </div>
                                 <div className="passport-stat">
                                     <dt>Bus numbers ridden</dt>
-                                    <dd>{formatCount(busNumbersRidden)}</dd>
+                                    <dd>
+                                        <button
+                                            className="passport-stamps-link"
+                                            type="button"
+                                            onClick={() => openSection('buses')}
+                                            aria-label={`View all ${busNumbersRidden} bus numbers ridden`}
+                                        >
+                                            {formatCount(busNumbersRidden)}
+                                            <span>View buses</span>
+                                        </button>
+                                    </dd>
                                 </div>
                                 <div className="passport-stat">
                                     <dt>Cities and towns visited</dt>
@@ -103,7 +113,7 @@ function Passport({
                         </article>
                     ) : (
                         <PassportCollection key={`${section}:${currentPage}`}
-                            section={section} stamps={stamps} cities={cities} page={currentPage} />
+                            section={section} stamps={stamps} cities={cities} buses={buses} page={currentPage} />
                     )}
                 </div>
 

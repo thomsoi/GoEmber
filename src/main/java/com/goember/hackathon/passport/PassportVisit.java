@@ -22,4 +22,5 @@ public class PassportVisit {
         this.stampKey = stampKey;
     }
     public String getStampKey() { return stampKey; }
+    public String getOperationId() { return operationId; }
 }

@@ -64,6 +64,27 @@ H2 design. External lookups occur outside passport write transactions.
 The passport response separates bus stop `stamps` from deduplicated `cities`.
 Only bus stop stamps contribute to the stamp total and level progress. Cities and
 towns open in their own passport pages; existing town records remain readable.
+City cards include `visitCount`; bus cards use `buses` entries with `routeNumber`
+and `rideCount`. The existing `busNumbers` list and distinct cover totals remain
+available. Each saved ride counts once for each city it visits and once for its
+bus number. City counting groups stop and town awards by their stable journey
+prefix, so multiple stops, airport/city aliases, and retries do not inflate it.
+Standalone visit operations count separately. Legacy visits without operation
+IDs remain counted individually because their ride identity cannot be recovered.
+
+`CityNames` normalizes upstream region labels when producing the city collection,
+including existing passports. Raw stamp metadata is retained so future mappings
+can correct past visits too. Stop names are never a fallback for city names. Edinburgh
+Airport maps to Edinburgh; Aberdeen Airport maps to Aberdeen; Glasgow Airport
+maps to Paisley. Unmapped facility labels (airports, terminals, services, park and
+ride sites, etc.) are excluded from city cards while retaining their stop stamps.
+Add an explicit, verified alias there when another facility needs a city mapping;
+do not infer cities by stripping arbitrary words from stop names. Ordinary region
+names still come from Ember, so this is not a geographic gazetteer.
+The airport mappings follow [Ember's region labels](https://www.ember.to/routes/glasgow-to-edinburgh-airport/),
+[Aberdeen Airport's address](https://www.aberdeenairport.com/help/terms-and-conditions/product-and-services-terms-and-conditions/),
+and [Glasgow Airport's address](https://www.glasgowairport.com/terms-and-conditions/product-and-services-terms-and-conditions/).
+
 Statistics count distinct bus numbers and visited towns. Distance is the estimated
 great-circle distance between boarding and alighting locations, not road distance.
 If any recorded journey has unknown distance, the total remains unavailable.

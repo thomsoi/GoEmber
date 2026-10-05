@@ -64,7 +64,8 @@ test('passport cover labels the distinct bus and town counters clearly', async (
         const { default: Passport } = await server.ssrLoadModule('/src/components/Passport.jsx');
         const markup = renderToStaticMarkup(React.createElement(Passport,
             { busNumbersRidden: 2, cities: [{ key: 'a', name: 'A' }, { key: 'b', name: 'B' }, { key: 'c', name: 'C' }], distanceTravelledKm: 62.5 }));
-        assert.match(markup, /Bus numbers ridden<\/dt><dd>2<\/dd>/);
+        assert.match(markup, /aria-label="View all 2 bus numbers ridden"/);
+        assert.match(markup, /View buses/);
         assert.match(markup, /aria-label="View all 3 visited cities and towns"/);
         assert.match(markup, /View cities/);
         assert.match(markup, /Distance travelled \(estimated\)/);
@@ -75,14 +76,30 @@ test('passport collections paginate independently and never mix cities with stop
     const server = await createServer({ server: { middlewareMode: true } });
     try {
         const { default: Collection } = await server.ssrLoadModule('/src/components/PassportCollection.jsx');
-        const cities = ['Aberdeen', 'Dundee', 'Edinburgh', 'Glasgow', 'Perth'].map(name => ({ key: name, name }));
+        const cities = ['Aberdeen', 'Dundee', 'Edinburgh', 'Glasgow', 'Perth'].map((name, index) => ({ key: name, name, visitCount: index + 1 }));
         const stamps = [{ id: 'location:1', stopName: 'Buchanan Bus Station', level: 'bronze', timesCollected: 10 }];
+        const buses = ['E1', 'E2', 'E7', 'E10', 'E20'].map((routeNumber, index) => ({ routeNumber, rideCount: index + 1 }));
         const render = (section, page, overrides = {}) => renderToStaticMarkup(React.createElement(Collection,
-            { section, page, cities, stamps, ...overrides }));
+            { section, page, cities, stamps, buses, ...overrides }));
+        const firstBuses = render('buses', 1);
+        assert.match(firstBuses, /Bus numbers ridden/);
+        assert.match(firstBuses, /Page 1 of 2/);
+        assert.match(firstBuses, /<h3>E1<\/h3>/);
+        assert.match(firstBuses, /<h3>E7<\/h3>/);
+        assert.match(firstBuses, /Ridden 1 time<\/p>/);
+        assert.match(firstBuses, /Ridden 3 times<\/p>/);
+        assert.doesNotMatch(firstBuses, /E20|Glasgow|Buchanan Bus Station/);
+        const secondBuses = render('buses', 2);
+        assert.match(secondBuses, /<h3>E20<\/h3>/);
+        assert.match(secondBuses, /Page 2 of 2/);
+        assert.doesNotMatch(secondBuses, /<h3>E1<\/h3>|Glasgow|Buchanan Bus Station/);
+        assert.match(render('buses', 1, { buses: [] }), /No bus numbers recorded yet/);
         const firstCities = render('cities', 1);
         assert.match(firstCities, /Cities and towns visited/);
         assert.match(firstCities, /Page 1 of 2/);
         assert.match(firstCities, /Glasgow/);
+        assert.match(firstCities, /Visited 1 time<\/p>/);
+        assert.match(firstCities, /Visited 4 times<\/p>/);
         assert.doesNotMatch(firstCities, /Perth|Buchanan Bus Station|stamp-seal|Collected 10/);
         const secondCities = render('cities', 2);
         assert.match(secondCities, /Perth/);

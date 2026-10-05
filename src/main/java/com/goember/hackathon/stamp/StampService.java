@@ -78,7 +78,7 @@ public class StampService {
         if (existing.isPresent()) return existing.get();
         var locations = emberClient.searchLocations(townName.trim(), 50, "STOP_POINT");
         String canonicalName = locations.stream()
-                .flatMap(location -> java.util.stream.Stream.of(location.get("region_name"), location.get("name")))
+                .map(location -> location.get("region_name"))
                 .filter(String.class::isInstance).map(String.class::cast)
                 .filter(name -> normalize(name).equals(normalized)).findFirst()
                 .orElseThrow(() -> new EntityNotFoundException("Ember town not found: " + townName));
@@ -88,6 +88,7 @@ public class StampService {
     }
 
     private Stamp toLocationStamp(long locationId, Map<String, Object> location) {
+        // Keep source metadata so future city mappings can also repair existing visits.
         String region = location.get("region_name") instanceof String name && !name.isBlank() ? name.trim() : null;
         return new Stamp(locationId, (String) location.get("name"), region,
                 coordinate(location.get("lat"), 90), coordinate(location.get("lon"), 180));

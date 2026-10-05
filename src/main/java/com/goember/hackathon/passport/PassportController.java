@@ -128,7 +128,9 @@ public class PassportController {
 				travelStats.busNumbersRidden(),
 				travelStats.townsVisited(),
 				stamps,
-				travelStats.cities());
+				travelStats.cities(),
+				travelStats.busNumbers(),
+				travelStats.buses());
 	}
 
 	public record PassportResponse(
@@ -137,7 +139,9 @@ public class PassportController {
 			long busNumbersRidden,
 			long townsVisited,
 			List<PassportStampResponse> stamps,
-			List<PassportService.VisitedCity> cities) {
+			List<PassportService.VisitedCity> cities,
+			List<String> busNumbers,
+			List<PassportService.RiddenBus> buses) {
 	}
 
 	public record PassportStampResponse(

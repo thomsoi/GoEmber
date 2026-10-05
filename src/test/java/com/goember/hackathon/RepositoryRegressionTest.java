@@ -37,6 +37,7 @@ class RepositoryRegressionTest {
     @Autowired UserService users;
     @Autowired PassportService passports;
     @Autowired JourneyService journeys;
+    @Autowired com.goember.hackathon.stamp.StampRepository stamps;
     final ObjectMapper json = new ObjectMapper();
     final HttpClient http = HttpClient.newHttpClient();
 
@@ -207,6 +208,71 @@ class RepositoryRegressionTest {
     }
 
     @Test
+    void airportAndCityStopsCountOncePerRideIncludingRetriesAndTownAwards() throws Exception {
+        when(ember.findLocationById(10601L)).thenReturn(Optional.of(Map.of(
+                "id", 10601L, "name", "Terminal Stop E", "region_name", "Edinburgh Airport")));
+        when(ember.findLocationById(10602L)).thenReturn(Optional.of(Map.of(
+                "id", 10602L, "name", "Haymarket", "region_name", "Edinburgh")));
+        when(ember.searchLocations(eq("Edinburgh Airport"), anyInt(), anyString())).thenReturn(List.of(
+                Map.of("id", 10601L, "name", "Terminal Stop E", "region_name", "Edinburgh Airport")));
+        when(ember.searchLocations(eq("Edinburgh"), anyInt(), anyString())).thenReturn(List.of(
+                Map.of("id", 10602L, "name", "Haymarket", "region_name", "Edinburgh")));
+        var guest = guest();
+        String path = "/api/passports/" + guest.get("id").asLong();
+        String token = guest.get("accessToken").asString();
+        for (String ride : List.of("airport-ride-1", "airport-ride-2")) {
+            for (long id : List.of(10601L, 10602L)) {
+                String body = json.writeValueAsString(Map.of("operationId", ride + ":stop:0:" + id));
+                assertEquals(200, call("POST", path + "/locations/" + id + "/visits", token, body).statusCode());
+                assertEquals(200, call("POST", path + "/locations/" + id + "/visits", token, body).statusCode());
+            }
+            for (int index = 0; index < 2; index++) {
+                String body = json.writeValueAsString(Map.of("townName", index == 0 ? "Edinburgh Airport" : "Edinburgh",
+                        "operationId", ride + ":town:" + index));
+                assertEquals(200, call("POST", path + "/towns/visits", token, body).statusCode());
+                assertEquals(200, call("POST", path + "/towns/visits", token, body).statusCode());
+            }
+            String body = completion(ride, "e20", 10601, 10602);
+            assertEquals(200, call("POST", path + "/journeys", token, body).statusCode());
+            assertEquals(200, call("POST", path + "/journeys", token, body).statusCode());
+        }
+        // Source metadata stays intact; the city projection also repairs older raw airport stamps.
+        var oldStamp = stamps.findByLocationId(10601L).orElseThrow();
+        assertEquals("Edinburgh Airport", oldStamp.getRegionName());
+        var passport = json.readTree(call("GET", path, token, null).body());
+        assertEquals(1, passport.get("cities").size());
+        assertEquals("Edinburgh", passport.get("cities").get(0).get("name").asString());
+        assertEquals(2, passport.get("cities").get(0).get("visitCount").asInt());
+        assertEquals(2, passport.get("stamps").size());
+        assertEquals(1, passport.get("busNumbersRidden").asInt());
+        assertEquals("E20", passport.get("buses").get(0).get("routeNumber").asString());
+        assertEquals(2, passport.get("buses").get(0).get("rideCount").asInt());
+    }
+
+    @Test
+    void stopNamesCannotBeUsedAsCitiesAndUnknownFacilitiesStayOutOfTheCollection() throws Exception {
+        when(ember.searchLocations(eq("Buchanan Bus Station"), anyInt(), anyString())).thenReturn(List.of(
+                Map.of("id", 10611L, "name", "Buchanan Bus Station", "region_name", "Glasgow")));
+        when(ember.findLocationById(10612L)).thenReturn(Optional.of(Map.of(
+                "id", 10612L, "name", "Terminal", "region_name", "Unknown Airport")));
+        when(ember.findLocationById(10613L)).thenReturn(Optional.of(Map.of(
+                "id", 10613L, "name", "Edinburgh Bus Station")));
+        var guest = guest();
+        String path = "/api/passports/" + guest.get("id").asLong();
+        String token = guest.get("accessToken").asString();
+        assertEquals(404, call("POST", path + "/towns/visits", token,
+                "{\"townName\":\"Buchanan Bus Station\",\"operationId\":\"not-a-city\"}").statusCode());
+        for (long id : List.of(10612L, 10613L)) {
+            assertEquals(200, call("POST", path + "/locations/" + id + "/visits", token,
+                    json.writeValueAsString(Map.of("operationId", "facility-" + id))).statusCode());
+        }
+        var passport = json.readTree(call("GET", path, token, null).body());
+        assertEquals(0, passport.get("cities").size());
+        assertEquals(2, passport.get("stamps").size());
+        assertEquals("Unknown Airport", stamps.findByLocationId(10612L).orElseThrow().getRegionName());
+    }
+
+    @Test
     void unknownDistancePersistsInH2AndRemainsUnavailableInResponse() throws Exception {
         var guest = guest();
         String path = "/api/passports/" + guest.get("id").asLong();
@@ -286,6 +352,7 @@ class RepositoryRegressionTest {
         var stamped = json.readTree(call("GET", path, token, null).body());
         assertEquals(2, stamped.get("townsVisited").asInt());
         assertEquals(0, stamped.get("busNumbersRidden").asInt());
+        assertEquals(0, stamped.get("busNumbers").size());
         assertEquals(0, stamped.get("totalDistanceTravelled").asDouble());
 
         for (String key : List.of("ride-1", "ride-2")) {
@@ -299,6 +366,11 @@ class RepositoryRegressionTest {
         var passport = json.readTree(call("GET", path, token, null).body());
         assertEquals(2, passport.get("townsVisited").asInt());
         assertEquals(2, passport.get("busNumbersRidden").asInt());
+        assertEquals(2, passport.get("busNumbers").size());
+        assertEquals("E10", passport.get("busNumbers").get(0).asString());
+        assertEquals("E31", passport.get("busNumbers").get(1).asString());
+        assertEquals(1, passport.get("buses").get(0).get("rideCount").asInt());
+        assertEquals(2, passport.get("buses").get(1).get("rideCount").asInt());
         assertTrue(passport.get("totalDistanceTravelled").asDouble() > 120);
         assertTrue(passport.get("totalDistanceTravelled").asDouble() < 130);
         verify(ember, never()).findLocationById(10101L);

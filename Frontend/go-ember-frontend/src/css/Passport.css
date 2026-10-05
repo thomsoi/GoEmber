@@ -248,7 +248,8 @@
 	font-size: 14px;
 }
 
-.passport-city {
+.passport-city,
+.passport-bus {
 	display: grid;
 	align-content: center;
 	gap: 8px;
@@ -260,13 +261,15 @@
 	overflow-wrap: anywhere;
 }
 
-.passport-city h3 {
+.passport-city h3,
+.passport-bus h3 {
 	margin: 0;
 	color: #174d46;
 	font-size: 16px;
 }
 
-.passport-city p {
+.passport-city p,
+.passport-bus p {
 	color: #526b64;
 	font-size: 12px;
 }
