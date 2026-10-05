@@ -68,20 +68,32 @@
 	font-size: 13px;
 }
 
-.journey-submit-button {
-	width: 100%;
-	margin-top: 4px;
-}
-
-.journey-submit-button:hover,
-.visit-stop-button:hover,
-.journey-stats-home:hover {
+.journey-submit-button:hover {
 	background: #23685e;
 }
 
-.journey-sample-note {
-	margin: 16px 0 0;
-	color: #71847e;
-	font-size: 12px;
-	line-height: 1.4;
+.journey-submit-button {
+	width: 100%;
+	margin-top: 4px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 48px;
+	box-sizing: border-box;
+	border: 0;
+	border-radius: 10px;
+	padding: 0 18px;
+	background: #174d46;
+	color: #fff;
+	font: inherit;
+	font-size: 15px;
+	font-weight: 700;
+	text-align: center;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+.journey-submit-button:focus-visible {
+	outline: 3px solid #8ab8aa;
+	outline-offset: 3px;
 }

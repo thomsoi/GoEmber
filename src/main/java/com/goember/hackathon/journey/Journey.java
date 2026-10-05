@@ -1,27 +1,3 @@
-/*
-
-User selects origin + destination
-        ↓
-GET /v1/quotes/
-        ↓
-Show available journeys
-        ↓
-User selects one
-        ↓
-Get its trip ID
-        ↓
-GET /v1/trips/{tripId}/?route=true
-        ↓
-Ordered Ember stops
-        ↓
-Start our Journey
-        ↓
-GPS discovers stops
-        ↓
-Award Passport stamps
-
-*/
-
 package com.goember.hackathon.journey;
 
 import java.time.LocalDateTime;

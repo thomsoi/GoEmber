@@ -61,7 +61,7 @@ function Home() {
                         username={passportData.username}
                         stamps={stamps}
                         busNumbersRidden={passport.busNumbersRidden ?? 0}
-                        townsVisited={passport.townsVisited ?? 0}
+                        cities={passport.cities ?? []}
                         distanceTravelledKm={passport.totalDistanceTravelled}
                     />
                 </>

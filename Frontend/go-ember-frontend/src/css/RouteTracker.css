@@ -9,14 +9,6 @@
 	padding: 28px 20px 20px;
 }
 
-.route-tracker-stopbar {
-	position: sticky;
-	z-index: 2;
-	bottom: calc(82px + env(safe-area-inset-bottom));
-	margin-top: auto;
-	padding-top: 16px;
-}
-
 .route-tracker-route-summary {
 	display: grid;
 	justify-items: center;
@@ -42,43 +34,4 @@
 	font: inherit;
 	font-size: 13px;
 	cursor: pointer;
-}
-
-.route-end-button,
-.journey-submit-button,
-.visit-stop-button,
-.journey-stats-home {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	min-height: 48px;
-	box-sizing: border-box;
-	border: 0;
-	border-radius: 10px;
-	padding: 0 18px;
-	background: #174d46;
-	color: #fff;
-	font: inherit;
-	font-size: 15px;
-	font-weight: 700;
-	text-align: center;
-	text-decoration: none;
-	cursor: pointer;
-}
-
-.route-end-button {
-	width: 100%;
-	background: #a64035;
-}
-
-.route-end-button:hover {
-	background: #87362e;
-}
-
-.route-end-button:focus-visible,
-.journey-submit-button:focus-visible,
-.visit-stop-button:focus-visible,
-.journey-stats-home:focus-visible {
-	outline: 3px solid #8ab8aa;
-	outline-offset: 3px;
 }

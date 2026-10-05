@@ -1,7 +1,9 @@
 package com.goember.hackathon.ember;
 
+import static com.goember.hackathon.ember.EmberRouteMapper.readLiveRoute;
+import static com.goember.hackathon.ember.EmberRouteMapper.readRoute;
+
 import java.time.Instant;
-import java.time.DateTimeException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -10,11 +12,11 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
+import com.goember.hackathon.ember.EmberRouteMapper.RouteStop;
+import com.goember.hackathon.geo.GeoDistance;
 import com.goember.hackathon.ember.proto.GPSInfo;
 import com.goember.hackathon.ember.proto.LiveVehicleData;
 import com.goember.hackathon.ember.proto.MinimalVehicleTrip;
-import com.goember.hackathon.ember.proto.MinimalLocationTime;
-import com.goember.hackathon.ember.proto.ProtoTimestamp;
 import com.goember.hackathon.stop.Stop;
 
 @Service
@@ -34,17 +36,15 @@ public class EmberService {
         );
     }
 
-    public List<Stop> getStops() {
-        List<Map<String, Object>> locations = getStopPoints();
-
-        if (locations == null) {
-            return List.of();
-        }
-
-        return locations.stream()
-                .filter(location -> location != null)
-                .map(this::toStop)
+    public List<Map<String, Object>> getNearbyStopPoints(double latitude, double longitude, double radiusKm) {
+        return getStopPoints().stream()
+                .filter(location -> GeoDistance.kilometers(latitude, longitude,
+                        asDouble(location.get("lat")), asDouble(location.get("lon"))) <= radiusKm)
                 .toList();
+    }
+
+    public List<Stop> getStops() {
+        return getStopPoints().stream().map(this::toStop).toList();
     }
 
     public Map<String, Object> getTrip(Long tripId) {
@@ -127,68 +127,6 @@ public class EmberService {
 
     private RouteStop findEvent(List<RouteStop> route, long eventId) {
         return route.stream().filter(stop -> stop.eventId() == eventId).findFirst().orElse(null);
-    }
-
-    private List<RouteStop> readLiveRoute(MinimalVehicleTrip trip) {
-        var stops = new ArrayList<>(trip.getRouteList());
-        if (trip.hasCurrentStop()) mergeLiveStop(stops, trip.getCurrentStop());
-        if (trip.hasNextStop()) mergeLiveStop(stops, trip.getNextStop());
-        return stops.stream().map(stop -> {
-            var times = stop.getDeparture();
-            Instant time = times.hasEstimated() ? timestamp(times.getEstimated())
-                    : times.hasScheduled() ? timestamp(times.getScheduled()) : null;
-            return new RouteStop(Integer.toUnsignedLong(stop.getId()), new BusStop(null,
-                    stop.getLocation().getName(), stop.getLocation().getRegionName(), Integer.toUnsignedLong(stop.getId())),
-                    stop.getAllowBoarding(), stop.getAllowDropOff(), false, time,
-                    times.hasActual() ? timestamp(times.getActual()) : null);
-        }).toList();
-    }
-
-    private void mergeLiveStop(List<MinimalLocationTime> stops, MinimalLocationTime observed) {
-        for (int i = 0; i < stops.size(); i++) {
-            if (stops.get(i).getId() == observed.getId()) {
-                stops.set(i, observed);
-                return;
-            }
-        }
-        // The public feed gives endpoints, plus the current and next stop in between.
-        stops.add(Math.max(0, stops.size() - 1), observed);
-    }
-
-    private Instant timestamp(ProtoTimestamp value) {
-        try { return Instant.ofEpochSecond(value.getSeconds(), value.getNanos()); }
-        catch (DateTimeException exception) { throw invalidTrip(); }
-    }
-
-    private List<RouteStop> readRoute(Map<String, Object> detail) {
-        if (detail == null || !(detail.get("route") instanceof List<?> rows)) throw invalidTrip();
-        var route = new ArrayList<RouteStop>();
-        for (var row : rows) {
-            if (!(row instanceof Map<?, ?> stop) || !(stop.get("id") instanceof Number eventId)
-                    || !(stop.get("location") instanceof Map<?, ?> location)
-                    || !(location.get("id") instanceof Number locationId)
-                    || !(location.get("name") instanceof String name) || name.isBlank()
-                    || !(stop.get("departure") instanceof Map<?, ?> times)
-                    || !(stop.get("allow_boarding") instanceof Boolean boarding)
-                    || !(stop.get("allow_drop_off") instanceof Boolean dropOff)) throw invalidTrip();
-            Instant estimated = readTime(times.get("estimated"));
-            Instant scheduled = readTime(times.get("scheduled"));
-            route.add(new RouteStop(eventId.longValue(), new BusStop(locationId.longValue(), name,
-                    asString(location.get("region_name")), eventId.longValue()), boarding, dropOff, Boolean.TRUE.equals(stop.get("skipped")),
-                    estimated == null ? scheduled : estimated, readTime(times.get("actual"))));
-        }
-        return route;
-    }
-
-    private Instant readTime(Object value) {
-        if (value == null) return null;
-        if (!(value instanceof String text)) throw invalidTrip();
-        try { return Instant.parse(text); }
-        catch (DateTimeException exception) { throw invalidTrip(); }
-    }
-
-    private EmberApiException invalidTrip() {
-        return new EmberApiException("Ember returned invalid trip details. Please try again later.", null, false);
     }
 
     private boolean matchesLocation(BusStop stop, String query) {
@@ -277,6 +215,4 @@ public class EmberService {
     }
 
     private record VehicleTrip(LiveVehicleData vehicle, MinimalVehicleTrip trip, boolean upcoming) {}
-    private record RouteStop(long eventId, BusStop stop, boolean boarding, boolean dropOff,
-            boolean skipped, Instant time, Instant actual) {}
 }

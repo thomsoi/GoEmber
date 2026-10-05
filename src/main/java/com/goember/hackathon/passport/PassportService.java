@@ -13,6 +13,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.goember.hackathon.geo.GeoDistance;
 import com.goember.hackathon.ember.EmberClient;
 import com.goember.hackathon.ember.EmberApiException;
 import com.goember.hackathon.stamp.PassportStamp;
@@ -217,15 +218,18 @@ public class PassportService {
 		Double totalDistanceKilometers = allDistancesAvailable
 				? journeys.stream().mapToDouble(PassportJourney::getDistanceKilometers).sum()
 				: null;
-		long townsVisited = passportStampRepository.findAllByPassport_PassportId(passportId).stream()
-				.map(entry -> entry.getStamp().getRegionName())
-				.filter(town -> town != null && !town.isBlank())
-				.map(town -> town.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT))
-				.distinct()
-				.count();
+		// Include canonical stop regions and previously recorded town visits once each.
+		var citiesByKey = new java.util.TreeMap<String, VisitedCity>();
+		for (var entry : passportStampRepository.findAllByPassport_PassportId(passportId)) {
+			String region = entry.getStamp().getRegionName();
+			if (region == null || region.isBlank()) continue;
+			String name = region.trim().replaceAll("\\s+", " ");
+			String key = name.toLowerCase(Locale.ROOT);
+			citiesByKey.putIfAbsent(key, new VisitedCity(key, name));
+		}
 		long busNumbersRidden = journeys.stream().map(PassportJourney::getRouteNumber)
 				.filter(number -> number != null && !number.isBlank()).distinct().count();
-		return new TravelStats(totalDistanceKilometers, busNumbersRidden, townsVisited);
+		return new TravelStats(totalDistanceKilometers, busNumbersRidden, List.copyOf(citiesByKey.values()));
 	}
 
 	private Map<String, Object> findLocation(long locationId) {
@@ -238,7 +242,7 @@ public class PassportService {
 		if (originStamp.isPresent() && destinationStamp.isPresent()
 				&& originStamp.get().getLatitude() != null && originStamp.get().getLongitude() != null
 				&& destinationStamp.get().getLatitude() != null && destinationStamp.get().getLongitude() != null) {
-			return distanceInKilometers(originStamp.get().getLatitude(), originStamp.get().getLongitude(),
+			return GeoDistance.kilometers(originStamp.get().getLatitude(), originStamp.get().getLongitude(),
 					destinationStamp.get().getLatitude(), destinationStamp.get().getLongitude());
 		}
 		Map<String, Object> origin;
@@ -263,7 +267,7 @@ public class PassportService {
 			return null;
 		}
 
-		return distanceInKilometers(originLatitude, originLongitude, destinationLatitude, destinationLongitude);
+		return GeoDistance.kilometers(originLatitude, originLongitude, destinationLatitude, destinationLongitude);
 	}
 
 	private Double getCoordinate(Map<String, Object> location, String coordinateName) {
@@ -276,19 +280,6 @@ public class PassportService {
 			}
 		}
 		return null;
-	}
-
-	private double distanceInKilometers(double latitude1, double longitude1, double latitude2, double longitude2) {
-		double earthRadiusKilometers = 6371.0;
-		double latitudeDifference = Math.toRadians(latitude2 - latitude1);
-		double longitudeDifference = Math.toRadians(longitude2 - longitude1);
-		double haversine = Math.sin(latitudeDifference / 2) * Math.sin(latitudeDifference / 2)
-				+ Math.cos(Math.toRadians(latitude1))
-				* Math.cos(Math.toRadians(latitude2))
-				* Math.sin(longitudeDifference / 2)
-				* Math.sin(longitudeDifference / 2);
-		haversine = Math.max(0, Math.min(1, haversine));
-		return earthRadiusKilometers * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
 	}
 
 	private Passport findOrCreatePassport(Long userId) {
@@ -305,6 +296,11 @@ public class PassportService {
 		userRepository.findForUpdate(userId).orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
 	}
 
-	public record TravelStats(Double totalDistanceKilometers, long busNumbersRidden, long townsVisited) {
+	public record VisitedCity(String key, String name) {}
+
+	public record TravelStats(Double totalDistanceKilometers, long busNumbersRidden, List<VisitedCity> cities) {
+		public long townsVisited() {
+			return cities.size();
+		}
 	}
 }

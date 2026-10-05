@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import {
-    ensureCurrentPassport, currentGuestToken, getLiveBuses,
-    recordCompletedJourney, recordLocationVisits, recordTownVisit,
-} from '../services/BackendAPI';
+import { ensureCurrentPassport, currentGuestToken, getLiveBuses } from '../services/BackendAPI';
 import { startRide, advanceRide, disconnectRide } from '../services/ride';
 import { busKey, busLabel, departureLabel } from '../services/buses';
+import { syncPendingAwards } from '../services/awardSync';
 import { reassignQueuedAwards } from '../services/trackerStore';
 import '../css/LiveBusTracker.css';
 
@@ -122,34 +120,7 @@ function LiveBusTracker({ origin, destination, tracker, updateTracker, onSelecte
                 }
                 updateTracker(current => reassignQueuedAwards(current, currentGuestToken()));
             }
-            // Keep stable operation IDs until the server acknowledges each write.
-            // Retrying a committed write with a lost response cannot award it twice.
-            const pendingStops = [...trackerRef.current.stops];
-            for (let index = 0; index < pendingStops.length; index += 50) {
-                const batch = pendingStops.slice(index, index + 50);
-                await recordLocationVisits(userId, batch);
-                const acknowledged = new Set(batch.map(stop => stop.operationId));
-                updateTracker(current => ({ ...current,
-                    stops: current.stops.filter(stop => !acknowledged.has(stop.operationId)) }));
-            }
-            for (const journey of [...trackerRef.current.journeys]) {
-                if (!journey.completionRecorded) {
-                    const details = { ...journey };
-                    delete details.townsToStamp;
-                    delete details.completionRecorded;
-                    await recordCompletedJourney(userId, details);
-                    updateTracker(current => ({ ...current, journeys: current.journeys.map(item =>
-                        item.journeyKey === journey.journeyKey ? { ...item, completionRecorded: true } : item) }));
-                }
-                for (const town of journey.townsToStamp) {
-                    const operationId = `${journey.journeyKey}:town:${journey.towns.indexOf(town)}`;
-                    await recordTownVisit(userId, town, operationId);
-                    updateTracker(current => ({ ...current, journeys: current.journeys.map(item =>
-                        item.journeyKey === journey.journeyKey
-                            ? { ...item, townsToStamp: item.townsToStamp.filter(name => name !== town) } : item) }));
-                }
-                updateTracker(current => ({ ...current, journeys: current.journeys.filter(item => item.journeyKey !== journey.journeyKey) }));
-            }
+            await syncPendingAwards(userId, trackerRef.current, updateTracker);
             setFeedback({ type: 'success', text: `${warning ? `${warning} ` : ''}Your observed stops and journey statistics were saved.` });
         } catch (error) {
             setFeedback({ type: 'error', text: `${warning ? `${warning} ` : ''}${error.message || 'Could not save awards.'} Unsaved awards are retained; you can try again.` });

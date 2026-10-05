@@ -3,19 +3,16 @@ package com.goember.hackathon.passport;
 import java.time.Instant;
 import java.util.List;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.goember.hackathon.stamp.PassportStamp;
 import com.goember.hackathon.stamp.Stamp;
 
-import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -41,11 +38,7 @@ public class PassportController {
 	public PassportResponse getPassport(@PathVariable Long userId,
 			@RequestHeader(value = "Authorization", required = false) String authorization) {
 		access.requireUser(userId, authorization);
-		try {
-			return toPassportResponse(passportService.getOrCreatePassport(userId));
-		} catch (EntityNotFoundException exception) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, exception.getMessage(), exception);
-		}
+		return toPassportResponse(passportService.getOrCreatePassport(userId));
 	}
 
 	@PostMapping("/{userId}/journeys")
@@ -72,23 +65,9 @@ public class PassportController {
 			@Valid @RequestBody LocationVisitRequest request,
 			@RequestHeader(value = "Authorization", required = false) String authorization) {
 		access.requireUser(userId, authorization);
-		try {
-			String locationName = request == null ? null : request.locationName();
-			PassportStamp passportStamp = passportService.recordLocationVisit(userId, emberLocationId, locationName, request.operationId());
-			Stamp stamp = passportStamp.getStamp();
-			return new StampVisitResponse(
-					stamp.getLocationId(),
-					stamp.getStampKey(),
-					stamp.getName(),
-					passportStamp.getTier().getValue(),
-					passportStamp.getVisitCount(),
-					passportService.percentOfUsersWithStamp(stamp.getLocationId()),
-					passportStamp.getVisitCount() > 1,
-					passportStamp.getFirstVisitedAt(),
-					passportStamp.getMostRecentVisitAt());
-		} catch (EntityNotFoundException exception) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, exception.getMessage(), exception);
-		}
+		PassportStamp passportStamp = passportService.recordLocationVisit(
+				userId, emberLocationId, request.locationName(), request.operationId());
+		return toStampVisitResponse(passportStamp);
 	}
 
 	@PostMapping("/{userId}/locations/visits")
@@ -107,6 +86,10 @@ public class PassportController {
 			@RequestHeader(value = "Authorization", required = false) String authorization) {
 		access.requireUser(userId, authorization);
 		PassportStamp passportStamp = passportService.recordTownVisit(userId, request.townName(), request.operationId());
+		return toStampVisitResponse(passportStamp);
+	}
+
+	private StampVisitResponse toStampVisitResponse(PassportStamp passportStamp) {
 		Stamp stamp = passportStamp.getStamp();
 		return new StampVisitResponse(
 				stamp.getLocationId(),
@@ -114,7 +97,9 @@ public class PassportController {
 				stamp.getName(),
 				passportStamp.getTier().getValue(),
 				passportStamp.getVisitCount(),
-				passportService.percentOfUsersWithStampKey(stamp.getStampKey()),
+				stamp.getLocationId() == null
+						? passportService.percentOfUsersWithStampKey(stamp.getStampKey())
+						: passportService.percentOfUsersWithStamp(stamp.getLocationId()),
 				passportStamp.getVisitCount() > 1,
 				passportStamp.getFirstVisitedAt(),
 				passportStamp.getMostRecentVisitAt());
@@ -122,6 +107,7 @@ public class PassportController {
 
 	private PassportResponse toPassportResponse(Passport passport) {
 		List<PassportStampResponse> stamps = passport.getStamps().stream()
+				.filter(entry -> entry.getStamp().getLocationId() != null)
 				.map(passportStamp -> new PassportStampResponse(
 						passportStamp.getStamp().getLocationId(),
 						passportStamp.getStamp().getStampKey(),
@@ -141,7 +127,8 @@ public class PassportController {
 				travelStats.totalDistanceKilometers(),
 				travelStats.busNumbersRidden(),
 				travelStats.townsVisited(),
-				stamps);
+				stamps,
+				travelStats.cities());
 	}
 
 	public record PassportResponse(
@@ -149,7 +136,8 @@ public class PassportController {
 			Double totalDistanceTravelled,
 			long busNumbersRidden,
 			long townsVisited,
-			List<PassportStampResponse> stamps) {
+			List<PassportStampResponse> stamps,
+			List<PassportService.VisitedCity> cities) {
 	}
 
 	public record PassportStampResponse(

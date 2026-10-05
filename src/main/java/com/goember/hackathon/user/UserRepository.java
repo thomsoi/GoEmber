@@ -12,17 +12,3 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("select u from User u where u.id = :id")
     Optional<User> findForUpdate(@Param("id") Long id);
 }
-
-/*
-We have access to:
-
-userRepository.findById(1L);
-
-userRepository.findAll();
-
-userRepository.save(user);
-
-userRepository.delete(user);
-
-userRepository.count();
-*/

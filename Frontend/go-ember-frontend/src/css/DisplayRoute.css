@@ -50,25 +50,3 @@
 .display-route-stop.is-visited:not(:last-child)::after {
 	background: #287c6c;
 }
-
-.display-route-progress {
-	display: grid;
-	gap: 10px;
-	justify-items: center;
-	text-align: center;
-}
-
-.display-route-progress p {
-	color: #526b64;
-	font-size: 13px;
-}
-
-.visit-stop-button {
-	width: 100%;
-	background: #287c6c;
-}
-
-.visit-stop-button:disabled {
-	background: #85958f;
-	cursor: default;
-}

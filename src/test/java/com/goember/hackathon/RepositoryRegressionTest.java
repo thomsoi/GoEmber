@@ -162,6 +162,48 @@ class RepositoryRegressionTest {
                 .get("townsVisited").asInt());
         assertEquals(404, call("POST", path, token,
                 "{\"townName\":\"Invented town\",\"operationId\":\"town-2\"}").statusCode());
+        var passport = json.readTree(call("GET", "/api/passports/" + guest.get("id").asLong(), token, null).body());
+        assertEquals(0, passport.get("stamps").size());
+        assertEquals(1, passport.get("cities").size());
+        assertEquals("origin", passport.get("cities").get(0).get("key").asString());
+    }
+
+    @Test
+    void citiesAreSeparateFromStopStampsAndDeduplicatedAcrossVisits() throws Exception {
+        when(ember.findLocationById(10501L)).thenReturn(Optional.of(Map.of(
+                "id", 10501L, "name", "Buchanan Bus Station", "region_name", "Glasgow")));
+        when(ember.findLocationById(10502L)).thenReturn(Optional.of(Map.of(
+                "id", 10502L, "name", "Anniesland", "region_name", " GLASGOW ")));
+        when(ember.searchLocations(eq("Glasgow"), anyInt(), anyString())).thenReturn(List.of(
+                Map.of("id", 10501L, "name", "Buchanan Bus Station", "region_name", "Glasgow")));
+        var guest = guest();
+        String path = "/api/passports/" + guest.get("id").asLong();
+        String token = guest.get("accessToken").asString();
+        var empty = json.readTree(call("GET", path, token, null).body());
+        assertEquals(0, empty.get("cities").size());
+        assertEquals(0, empty.get("stamps").size());
+        for (long id : List.of(10501L, 10502L)) {
+            assertEquals(200, call("POST", path + "/locations/" + id + "/visits", token,
+                    json.writeValueAsString(Map.of("operationId", "stop-" + id))).statusCode());
+        }
+        // Cities must already be visible when only the stop awards have been saved.
+        var stopsOnly = json.readTree(call("GET", path, token, null).body());
+        assertEquals(1, stopsOnly.get("cities").size());
+        assertEquals("glasgow", stopsOnly.get("cities").get(0).get("key").asString());
+        for (int visit = 0; visit < 2; visit++) {
+            String body = json.writeValueAsString(Map.of("townName", "Glasgow", "operationId", "city-" + visit));
+            assertEquals(200, call("POST", path + "/towns/visits", token, body).statusCode());
+            assertEquals(200, call("POST", path + "/towns/visits", token, body).statusCode());
+        }
+        var passport = json.readTree(call("GET", path, token, null).body());
+        assertEquals(1, passport.get("townsVisited").asInt());
+        assertEquals(1, passport.get("cities").size());
+        assertEquals(2, passport.get("stamps").size());
+        for (var stamp : passport.get("stamps")) {
+            assertTrue(stamp.get("locationId").asLong() > 0);
+            assertTrue(stamp.get("stampKey").asString().startsWith("location:"));
+            assertEquals(1, stamp.get("visitCount").asInt());
+        }
     }
 
     @Test

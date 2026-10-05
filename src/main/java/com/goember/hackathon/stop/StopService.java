@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.goember.hackathon.geo.GeoDistance;
 import com.goember.hackathon.ember.EmberService;
 
 @Service
@@ -45,7 +46,7 @@ public class StopService {
         double nearestDistance = Double.MAX_VALUE;
 
         for (Stop stop : stops) {
-            double distance = distanceInKm(
+            double distance = GeoDistance.kilometers(
                     latitude,
                     longitude,
                     stop.getLatitude(),
@@ -72,7 +73,7 @@ public class StopService {
     )
     {
         return getStops().stream()
-                .filter(stop -> distanceInKm(
+                .filter(stop -> GeoDistance.kilometers(
                         latitude,
                         longitude,
                         stop.getLatitude(),
@@ -81,29 +82,4 @@ public class StopService {
                 .toList();
     }
 
-    private double distanceInKm(
-            double lat1,
-            double lon1,
-            double lat2,
-            double lon2
-    ) {
-        double earthRadius = 6371.0;
-
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
-
-        double a =
-                Math.sin(dLat / 2) * Math.sin(dLat / 2)
-                + Math.cos(Math.toRadians(lat1))
-                * Math.cos(Math.toRadians(lat2))
-                * Math.sin(dLon / 2)
-                * Math.sin(dLon / 2);
-
-        double c = 2 * Math.atan2(
-                Math.sqrt(a),
-                Math.sqrt(1 - a)
-        );
-
-        return earthRadius * c;
-    }
 }
