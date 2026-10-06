@@ -72,9 +72,6 @@ The H2 web console is disabled by default.
 
 ### Configuration
 
-Backend defaults are in [application.properties](src/main/resources/application.properties).
-Spring configuration can override them; frontend configuration is read by Vite.
-
 | Environment variable | Default | Purpose |
 | --- | --- | --- |
 | `SERVER_PORT` | `8080` | Backend HTTP port |
@@ -196,9 +193,6 @@ used as a fallback for city names. Edinburgh Airport maps to Edinburgh, Aberdeen
 Airport to Aberdeen, and Glasgow Airport to Paisley. Unmapped facility labels
 are excluded from city cards while their stop stamps remain available. New aliases
 should be explicit and verified rather than inferred by stripping words from names.
-Existing mapping references are [Ember's region labels](https://www.ember.to/routes/glasgow-to-edinburgh-airport/),
-[Aberdeen Airport's address](https://www.aberdeenairport.com/help/terms-and-conditions/product-and-services-terms-and-conditions/),
-and [Glasgow Airport's address](https://www.glasgowairport.com/terms-and-conditions/).
 
 New rides estimate distance by summing great-circle distances between consecutive
 visited stops. Repeated visits remain in sequence, so loops count. This is a simple
@@ -238,24 +232,9 @@ including endpoints outside the frontend's current flow.
 The following are proposed improvements, not existing functionality. Prioritize
 small changes that strengthen the current product before expanding its architecture.
 
-1. **Add browser-level tests for complete rides.** Cover bus selection, boarding,
-   stop transitions, alighting, stamp notifications, pagination, and recovery after
-   a reload or failed save. Use deterministic transport fixtures.
-2. **Automate the existing checks in CI.** Run Maven verification, frontend tests,
+1. **Automate the existing checks in CI.** Run Maven verification, frontend tests,
    lint, and the production build on every change.
-3. **Make feed freshness clearer.** Display when a position was last updated and
-   distinguish stale data from a bus leaving the feed. Add focused tests for delayed
-   and out-of-order updates before changing progress rules.
-4. **Improve upstream diagnostics.** Record useful request timing and failure
-   categories without exposing credentials. Evaluate caching or bounded retries
-   only for demonstrated problems, including rate limits.
-5. **Decide how long passports should survive.** Agree on account recovery and data
-   retention before adding durable storage. Keep H2 as the current implementation;
-   a database change should be an explicit architectural decision.
-6. **Revisit distance accuracy if the product needs road mileage.** Evaluate reliable
-   route geometry or GPS history, partial rides, missing samples, and storage costs.
-   Preserve the distinction between estimated and measured distance, including for
-   older records.
-7. **Prepare deployment deliberately.** Add environment configuration, HTTPS,
+2. 4. **Add user accounts and user accounts.** Use a persistent database, such as PostgreSQL, to store user information and the option to create a user account.
+3. **Prepare deployment deliberately.** Add environment configuration, HTTPS,
    production CORS origins, and monitoring. Review the process-local locking model
    before scaling beyond one backend instance.
