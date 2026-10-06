@@ -80,10 +80,7 @@ maps to Paisley. Unmapped facility labels (airports, terminals, services, park a
 ride sites, etc.) are excluded from city cards while retaining their stop stamps.
 Add an explicit, verified alias there when another facility needs a city mapping;
 do not infer cities by stripping arbitrary words from stop names. Ordinary region
-names still come from Ember, so this is not a geographic gazetteer.
-The airport mappings follow [Ember's region labels](https://www.ember.to/routes/glasgow-to-edinburgh-airport/),
-[Aberdeen Airport's address](https://www.aberdeenairport.com/help/terms-and-conditions/product-and-services-terms-and-conditions/),
-and [Glasgow Airport's address](https://www.glasgowairport.com/terms-and-conditions/product-and-services-terms-and-conditions/).
+names still come from Ember.
 
 Statistics count distinct bus numbers and visited towns. Distance is the estimated
 great-circle distance between boarding and alighting locations, not road distance.
