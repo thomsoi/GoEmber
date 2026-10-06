@@ -2,6 +2,7 @@ AGENTS.md
 context.md
 HELP.md
 api.md
+EXPLANATIONS.md
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
