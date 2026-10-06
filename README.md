@@ -1,4 +1,4 @@
-# GoEmber / Ember Passport
+# GoEmber
 
 ## Introduction and overview
 
@@ -6,9 +6,8 @@ GoEmber turns Ember bus journeys into a personal travel passport. Browse live
 departures, track a ride, collect bus stop stamps, and see the towns and bus
 numbers you have visited or ridden.
 
-The application began as a hackathon project. Development now focuses on making
-the existing experience reliable, testable, and understandable through incremental
-improvements. It uses Java 21, Spring Boot, React, Vite, and an H2 in-memory database.
+The application began as a 5 hour hackathon project, and has been cleaned up and some bugs have been fixed since.
+It uses Java, Spring Boot, React, Vite, and an H2 in-memory database.
 Live transport information comes from Ember's public API.
 
 The main user flow is:
@@ -19,25 +18,13 @@ The main user flow is:
 3. Start tracking when boarding. The tracker follows observed route progress.
 4. End the ride to save reached stops and journey statistics. A brief notification
    confirms saved stamps; unsuccessful saves remain queued for retry.
-5. Browse stamps, cities/towns, and bus numbers in separate collections, with six
-   entries per page.
+5. Browse stamps, cities/towns, and bus numbers in separate viewable collections.
 
 The distance total is an estimate from stop locations, not measured road mileage.
 Accounts are currently guest sessions, and server-side data lasts only until the
 backend stops.
 
 ## How to run
-
-### Prerequisites
-
-- Java JDK 21, available through `JAVA_HOME` or `PATH`.
-- Node.js and npm. The locked Vite package requires Node `^20.19.0 || >=22.12.0`.
-- Internet access to download dependencies and use live Ember data.
-
-The repository includes the Maven wrapper, so a separate Maven installation is
-not required. Run the following commands from the repository root. These examples
-use Windows PowerShell; on Unix, use `./mvnw` instead of `.\mvnw.cmd` and `npm`
-instead of `npm.cmd`.
 
 ### Install and start
 
@@ -58,17 +45,6 @@ Start the frontend in another terminal:
 ```powershell
 npm.cmd run dev
 ```
-
-The backend defaults to `http://localhost:8080` and Vite to
-`http://localhost:5173`. Open the frontend URL printed by Vite. If port 5173 is
-occupied, free it or configure an allowed frontend origin: the backend currently
-permits localhost and 127.0.0.1 on ports 5173 and 3000.
-
-Restart the backend after Java changes. H2 uses `create-drop` with an in-memory
-database, so restarting clears guest accounts, passports, stamps, and journeys.
-Browser storage retains active rides and pending awards. The app replaces expired
-guest sessions and asks before moving pending awards to a replacement passport.
-The H2 web console is disabled by default.
 
 ### Configuration
 
@@ -102,8 +78,7 @@ validation, authorization, persistence, concurrency, distance calculations, and
 external failures. Frontend tests use Node's test runner and React server rendering
 for ride rules, API requests, queue recovery, and rendered states. Oxlint checks
 the frontend source. There is no standalone TypeScript check or browser interaction
-suite. Automated tests do not require the live Ember API; a real live ride still
-needs manual verification.
+suite.
 
 ## Architecture and system design
 
@@ -229,12 +204,9 @@ including endpoints outside the frontend's current flow.
 
 ## Future work and next steps
 
-The following are proposed improvements, not existing functionality. Prioritize
-small changes that strengthen the current product before expanding its architecture.
-
 1. **Automate the existing checks in CI.** Run Maven verification, frontend tests,
    lint, and the production build on every change.
-2. 4. **Add user accounts and user accounts.** Use a persistent database, such as PostgreSQL, to store user information and the option to create a user account.
+2. **Add user accounts and user accounts.** Use a persistent database, such as PostgreSQL, to store user information and the option to create a user account.
 3. **Prepare deployment deliberately.** Add environment configuration, HTTPS,
    production CORS origins, and monitoring. Review the process-local locking model
    before scaling beyond one backend instance.
