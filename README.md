@@ -1,4 +1,4 @@
-# GoEmber / Ember Passport
+# GoEmber
 
 ## Introduction and overview
 
@@ -229,12 +229,9 @@ including endpoints outside the frontend's current flow.
 
 ## Future work and next steps
 
-The following are proposed improvements, not existing functionality. Prioritize
-small changes that strengthen the current product before expanding its architecture.
-
 1. **Automate the existing checks in CI.** Run Maven verification, frontend tests,
    lint, and the production build on every change.
-2. 4. **Add user accounts and user accounts.** Use a persistent database, such as PostgreSQL, to store user information and the option to create a user account.
+2. **Add user accounts and user accounts.** Use a persistent database, such as PostgreSQL, to store user information and the option to create a user account.
 3. **Prepare deployment deliberately.** Add environment configuration, HTTPS,
    production CORS origins, and monitoring. Review the process-local locking model
    before scaling beyond one backend instance.
