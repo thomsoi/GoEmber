@@ -10,6 +10,7 @@
 }
 
 .route-tracker-route-summary {
+	anchor-name: --live-bus-search;
 	display: grid;
 	justify-items: center;
 	gap: 10px;

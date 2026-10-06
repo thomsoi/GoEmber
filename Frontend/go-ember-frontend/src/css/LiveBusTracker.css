@@ -42,6 +42,36 @@
 	outline-offset: 2px;
 }
 
+@supports (appearance: base-select) {
+	.live-bus-select,
+	.live-bus-select::picker(select) {
+		appearance: base-select;
+	}
+
+	.live-bus-select {
+		align-items: center;
+	}
+
+	.live-bus-select::picker(select) {
+		position: fixed;
+		position-area: none;
+		position-try-fallbacks: none;
+		inset: auto;
+		top: max(24px, anchor(--live-bus-search top, 110px));
+		right: 20vw;
+		width: anchor-size(width);
+		min-width: 0;
+		max-width: calc(80vw - 16px);
+		max-height: min(420px, calc(100dvh - 144px));
+		margin: 0;
+		overflow-y: auto;
+		border: 2px solid #6c9272;
+		border-radius: 12px;
+		background: #fffdf5;
+		color: #183e2f;
+	}
+}
+
 .live-bus-track-button {
 	width: 100%;
 	min-height: 46px;
