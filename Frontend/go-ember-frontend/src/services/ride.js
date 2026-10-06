@@ -90,6 +90,7 @@ export function finishRide(ride) {
             routeNumber: ride.routeNumber ?? null,
             originLocationId: origin.locationId,
             destinationLocationId: destination.locationId,
+            visitedLocationIds: reached.map(stop => stop.locationId),
             originName: origin.name,
             destinationName: destination.name,
             towns,

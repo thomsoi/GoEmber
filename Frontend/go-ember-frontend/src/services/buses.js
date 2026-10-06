@@ -1,4 +1,15 @@
+import { observedRouteIndex } from './ride.js';
+
 export const busKey = bus => `${bus.vehicleId}:${bus.tripUid}`;
+
+export function busStopsLabel(bus) {
+    // The live feed can omit current_stop between stops. Only the full route
+    // can identify the preceding stop; the sparse feed may contain endpoints only.
+    const lastStop = bus.routeDetailsLoaded && !bus.upcomingTrip
+        ? bus.route?.[observedRouteIndex(bus)] : null;
+    const from = bus.currentStop?.name || lastStop?.name || 'Current stop unavailable';
+    return `${from}${bus.nextStop?.name ? ` → ${bus.nextStop.name}` : ''}`;
+}
 
 export function departureLabel(bus, now = Date.now()) {
     if (!bus.departureTime) return 'Trip in progress';

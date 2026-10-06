@@ -1,0 +1,51 @@
+.stamp-notification-region {
+    position: fixed;
+    bottom: max(24px, env(safe-area-inset-bottom));
+    right: 24px;
+    width: min(390px, calc(100vw - 32px));
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.stamp-notification {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border: 1px solid #aec6ae;
+    border-left: 5px solid #326747;
+    border-radius: 14px;
+    background: #fffdf5;
+    color: #234b3c;
+    box-shadow: 0 8px 32px #183e2f26;
+    pointer-events: auto;
+    animation: stamp-notification-in 220ms ease-out;
+}
+
+.stamp-notification-icon { width: 48px; height: 56px; object-fit: contain; flex-shrink: 0; }
+.stamp-notification-copy { display: grid; gap: 5px; min-width: 0; text-align: left; }
+.stamp-notification-copy strong { font-size: 16px; }
+.stamp-notification-copy span { font-size: 13px; line-height: 1.4; color: #456153; overflow-wrap: anywhere; }
+.stamp-notification-dismiss {
+    align-self: flex-start;
+    flex-shrink: 0;
+    margin-left: auto;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #456153;
+    font-size: 24px;
+    cursor: pointer;
+}
+.stamp-notification-dismiss:hover { background: #eaf4e4; }
+.stamp-notification-dismiss:focus-visible { outline: 2px solid #326747; outline-offset: 2px; }
+
+@keyframes stamp-notification-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 480px) { .stamp-notification-region { right: 16px; } }
+@media (prefers-reduced-motion: reduce) { .stamp-notification { animation: none; } }

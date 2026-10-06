@@ -1,4 +1,5 @@
 import '../css/ProgressBar.css';
+import TravelIcon from './TravelIcon';
 
 function ProgressBar({ stampsCollected = 0, stampsPerLevel = 5 }) {
     const stampCount = Number.isFinite(stampsCollected)
@@ -13,7 +14,7 @@ function ProgressBar({ stampsCollected = 0, stampsPerLevel = 5 }) {
 
     return (
         <section className="progress-bar" aria-label="Passport progress">
-            <h2 className="progress-bar-level">Level {level}</h2>
+            <h2 className="progress-bar-level"><TravelIcon name="star" />Level {level}</h2>
             <div className="progress-bar-count" aria-live="polite">
                 {stampsTowardNextLevel} of {levelStampGoal} stamps to level {level + 1}
             </div>

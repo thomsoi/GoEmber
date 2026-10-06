@@ -3,7 +3,7 @@ import { recordCompletedJourney, recordLocationVisits, recordTownVisit } from '.
 const VISIT_BATCH_SIZE = 50;
 
 /** Remove queued work only after both the server write and local checkpoint succeed. */
-export async function syncPendingAwards(userId, pending, updateTracker) {
+export async function syncPendingAwards(userId, pending, updateTracker, onStampsCollected = () => {}) {
     // Stable operation IDs make retries safe when a committed response is lost.
     for (let index = 0; index < pending.stops.length; index += VISIT_BATCH_SIZE) {
         const batch = pending.stops.slice(index, index + VISIT_BATCH_SIZE);
@@ -11,6 +11,7 @@ export async function syncPendingAwards(userId, pending, updateTracker) {
         const acknowledged = new Set(batch.map(stop => stop.operationId));
         updateTracker(current => ({ ...current,
             stops: current.stops.filter(stop => !acknowledged.has(stop.operationId)) }));
+        onStampsCollected(batch);
     }
 
     for (const journey of pending.journeys) {

@@ -136,7 +136,7 @@ class RepositoryRegressionTest {
                 .get("townsVisited").asInt());
         assertEquals(2, json.readTree(call("POST", path, token,
                 "{\"operationId\":\"visit-2\"}").body()).get("visitCount").asInt());
-        assertEquals(409, call("POST", path.replace("/10/", "/20/"), token, body).statusCode());
+        assertEquals(409, call("POST", path.replace("/locations/10/", "/locations/20/"), token, body).statusCode());
     }
 
     @Test
@@ -312,6 +312,92 @@ class RepositoryRegressionTest {
         var passport = json.readTree(call("GET", path, token, null).body());
         assertEquals(1, passport.get("busNumbersRidden").asInt());
         assertTrue(passport.get("totalDistanceTravelled").isNull());
+    }
+
+    @Test
+    void routeDistanceIncludesIntermediateStopsAndRepeatedLocationsAndDeduplicatesRetries() throws Exception {
+        var locations = Map.<Long, Map<String, Object>>of(
+                10701L, Map.of("id", 10701L, "name", "Start", "lat", 0.0, "lon", 0.0),
+                10702L, Map.of("id", 10702L, "name", "Detour", "lat", 1.0, "lon", 0.0),
+                10703L, Map.of("id", 10703L, "name", "End", "lat", 0.0, "lon", 1.0));
+        when(ember.findLocationsByIds(anyList())).thenReturn(locations);
+        var guest = guest();
+        String path = "/api/passports/" + guest.get("id").asLong();
+        String token = guest.get("accessToken").asString();
+        String body = routeCompletion("detour", List.of(10701L, 10702L, 10703L));
+        assertEquals(200, call("POST", path + "/journeys", token, body).statusCode());
+        assertEquals(200, call("POST", path + "/journeys", token, body).statusCode());
+        double detour = json.readTree(call("GET", path, token, null).body()).get("totalDistanceTravelled").asDouble();
+        assertEquals(268.444, detour, 0.01); // Two legs, versus 111.195 km between endpoints.
+        verify(ember, times(1)).findLocationsByIds(List.of(10701L, 10702L, 10703L));
+
+        assertEquals(200, call("POST", path + "/journeys", token,
+                routeCompletion("loop", List.of(10701L, 10702L, 10701L))).statusCode());
+        double total = json.readTree(call("GET", path, token, null).body()).get("totalDistanceTravelled").asDouble();
+        assertEquals(detour + 222.390, total, 0.01);
+        verify(ember).findLocationsByIds(List.of(10701L, 10702L));
+    }
+
+    @Test
+    void routeDistanceUsesSavedStampCoordinatesWithoutExternalRequests() throws Exception {
+        stamps.saveAndFlush(new com.goember.hackathon.stamp.Stamp(10711L, "Start", "Town", 0.0, 0.0));
+        stamps.saveAndFlush(new com.goember.hackathon.stamp.Stamp(10712L, "End", "Town", 1.0, 0.0));
+        var guest = guest();
+        String path = "/api/passports/" + guest.get("id").asLong();
+        String token = guest.get("accessToken").asString();
+        assertEquals(200, call("POST", path + "/journeys", token,
+                routeCompletion("cached-loop", List.of(10711L, 10712L, 10711L))).statusCode());
+        assertEquals(222.390, json.readTree(call("GET", path, token, null).body())
+                .get("totalDistanceTravelled").asDouble(), 0.01);
+        verify(ember, never()).findLocationsByIds(anyList());
+        verify(ember, never()).findLocationById(anyLong());
+    }
+
+    @Test
+    void missingOrInvalidIntermediateCoordinatesAndUpstreamFailuresDoNotInventDistance() throws Exception {
+        for (String scenario : List.of("missing", "invalid", "failure")) {
+            var locations = new java.util.HashMap<Long, Map<String, Object>>();
+            locations.put(10721L, Map.of("lat", 0.0, "lon", 0.0));
+            locations.put(10723L, Map.of("lat", 0.0, "lon", 1.0));
+            if (scenario.equals("invalid")) locations.put(10722L, Map.of("lat", 91.0, "lon", 0.0));
+            if (scenario.equals("failure")) when(ember.findLocationsByIds(anyList()))
+                    .thenThrow(new EmberApiException("Unavailable", null, false));
+            else when(ember.findLocationsByIds(anyList())).thenReturn(locations);
+            var guest = guest();
+            String path = "/api/passports/" + guest.get("id").asLong();
+            String token = guest.get("accessToken").asString();
+            assertEquals(200, call("POST", path + "/journeys", token,
+                    routeCompletion(scenario, List.of(10721L, 10722L, 10723L))).statusCode());
+            var passport = json.readTree(call("GET", path, token, null).body());
+            assertTrue(passport.get("totalDistanceTravelled").isNull(), scenario);
+            assertEquals(1, passport.get("busNumbersRidden").asInt());
+        }
+    }
+
+    @Test
+    void singleObservedStopHasZeroDistanceWithoutCoordinateLookups() throws Exception {
+        var guest = guest();
+        String path = "/api/passports/" + guest.get("id").asLong();
+        String token = guest.get("accessToken").asString();
+        assertEquals(200, call("POST", path + "/journeys", token,
+                routeCompletion("one-stop", List.of(10731L))).statusCode());
+        assertEquals(0.0, json.readTree(call("GET", path, token, null).body()).get("totalDistanceTravelled").asDouble());
+        verify(ember, never()).findLocationsByIds(anyList());
+    }
+
+    @Test
+    void invalidVisitedStopListsAreRejectedBeforeSaving() throws Exception {
+        var guest = guest();
+        String path = "/api/passports/" + guest.get("id").asLong();
+        String token = guest.get("accessToken").asString();
+        for (String ids : List.of("[]", "[10,null,20]", "[10,-1,20]", "[20,10]", "[10]",
+                "[10," + "10,".repeat(199) + "20]")) {
+            String base = completion("invalid-stops", 10, 20);
+            String body = base.substring(0, base.length() - 1) + ",\"visitedLocationIds\":" + ids + "}";
+            assertEquals(400, call("POST", path + "/journeys", token, body).statusCode(), ids);
+        }
+        assertEquals(0, json.readTree(call("GET", path, token, null).body()).get("busNumbersRidden").asInt());
+        verify(ember, never()).findLocationsByIds(anyList());
     }
 
     @Test
@@ -527,6 +613,12 @@ class RepositoryRegressionTest {
 
     String completion(String key, long origin, long destination) {
         return completion(key, "E1", origin, destination);
+    }
+
+    String routeCompletion(String key, List<Long> stops) {
+        return json.writeValueAsString(Map.of("journeyKey", key, "routeNumber", "E1",
+                "originLocationId", stops.getFirst(), "destinationLocationId", stops.getLast(),
+                "originName", "Start", "destinationName", "End", "towns", List.of(), "visitedLocationIds", stops));
     }
 
     String completion(String key, String routeNumber, long origin, long destination) {

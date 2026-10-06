@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { ensureCurrentPassport, currentGuestToken, getLiveBuses } from '../services/BackendAPI';
 import { startRide, advanceRide, disconnectRide } from '../services/ride';
-import { busKey, busLabel, departureLabel } from '../services/buses';
+import { busKey, busLabel, busStopsLabel, departureLabel } from '../services/buses';
 import { syncPendingAwards } from '../services/awardSync';
 import { reassignQueuedAwards } from '../services/trackerStore';
+import StampNotification from './StampNotification';
 import '../css/LiveBusTracker.css';
 
 const POLL_INTERVAL_MS = 15000;
@@ -14,6 +15,12 @@ function LiveBusTracker({ origin, destination, tracker, updateTracker, onSelecte
     const [loading, setLoading] = useState(true);
     const [feedback, setFeedback] = useState(null);
     const [busy, setBusy] = useState(false);
+    const [stampNotification, setStampNotification] = useState(null);
+    useEffect(() => {
+        if (!stampNotification) return;
+        const timeout = window.setTimeout(() => setStampNotification(null), 4500);
+        return () => window.clearTimeout(timeout);
+    }, [stampNotification]);
     const busyRef = useRef(false);
     const trackerRef = useRef(tracker);
     const selectedRef = useRef(selectedVehicleId);
@@ -120,7 +127,12 @@ function LiveBusTracker({ origin, destination, tracker, updateTracker, onSelecte
                 }
                 updateTracker(current => reassignQueuedAwards(current, currentGuestToken()));
             }
-            await syncPendingAwards(userId, trackerRef.current, updateTracker);
+            await syncPendingAwards(userId, trackerRef.current, updateTracker, stamps => {
+                setStampNotification(previous => ({
+                    count: (previous?.count ?? 0) + stamps.length,
+                    name: stamps[0]?.name,
+                }));
+            });
             setFeedback({ type: 'success', text: `${warning ? `${warning} ` : ''}Your observed stops and journey statistics were saved.` });
         } catch (error) {
             setFeedback({ type: 'error', text: `${warning ? `${warning} ` : ''}${error.message || 'Could not save awards.'} Unsaved awards are retained; you can try again.` });
@@ -146,6 +158,7 @@ function LiveBusTracker({ origin, destination, tracker, updateTracker, onSelecte
 
     return (
         <section className="live-bus-tracker" aria-labelledby="live-bus-title">
+            <StampNotification notification={stampNotification} onDismiss={() => setStampNotification(null)} />
             <div className="live-bus-heading">
                 <p className="journey-eyebrow">EMBER LIVE</p>
                 <h2 id="live-bus-title">{origin && destination ? 'Buses serving this route' : 'Soonest departures'}</h2>
@@ -160,8 +173,7 @@ function LiveBusTracker({ origin, destination, tracker, updateTracker, onSelecte
                 </option>)}
             </select>
             {selectedBus && <p className="live-bus-stops">
-                {selectedBus.currentStop?.name || 'Current stop unavailable'}
-                {selectedBus.nextStop?.name ? ` → ${selectedBus.nextStop.name}` : ''}
+                {busStopsLabel(selectedBus)}
             </p>}
             {selectedBus && !selectedBus.routeDetailsLoaded && <p role="status">Loading the full route…</p>}
             {selectedBus && <p className="live-bus-stops">

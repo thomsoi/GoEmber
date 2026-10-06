@@ -1,4 +1,5 @@
 import '../css/NavBar.css';
+import TravelIcon from './TravelIcon';
 
 const navItems = [
     { id: 'home', label: 'Home', href: '/' },
@@ -19,7 +20,7 @@ function NavBar({ activePage }) {
                             href={item.href}
                             aria-current={isActive ? 'page' : undefined}
                         >
-                            {item.label}
+                            <TravelIcon name={item.id === 'home' ? 'book' : 'route'} />{item.label}
                         </a>
                     );
                 })}

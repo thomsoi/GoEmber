@@ -5,9 +5,10 @@
 	width: 100%;
 	min-width: 0;
 	box-sizing: border-box;
-	padding: 20px 16px;
-	border-radius: 8px;
-	background: #fff;
+	padding: 24px 20px;
+	border-radius: 18px;
+	background: #fffdf5;
+	border: 2px solid #aec6ae;
 }
 
 .display-route-header {
@@ -20,7 +21,7 @@
 
 .display-route-note {
 	margin: 8px 0 0;
-	color: #71847e;
+	color: #456153;
 	font-size: 12px;
 }
 
@@ -41,12 +42,12 @@
 	position: absolute;
 	top: 34px;
 	bottom: -1px;
-	left: 15px;
-	width: 2px;
-	background: #cbd5d1;
+	left: 14px;
+	width: 4px;
+	background: repeating-linear-gradient(to bottom, #718c71 0 6px, transparent 6px 11px);
 	content: '';
 }
 
 .display-route-stop.is-visited:not(:last-child)::after {
-	background: #287c6c;
+	background: #286343;
 }

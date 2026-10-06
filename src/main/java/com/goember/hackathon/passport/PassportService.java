@@ -174,6 +174,13 @@ public class PassportService {
 			String originName,
 			String destinationName,
 			List<String> towns) {
+		recordCompletedJourney(userId, journeyKey, routeNumber, originLocationId, destinationLocationId,
+				originName, destinationName, towns, null);
+	}
+
+	public void recordCompletedJourney(Long userId, String journeyKey, String routeNumber,
+			long originLocationId, long destinationLocationId, String originName, String destinationName,
+			List<String> towns, List<Long> visitedLocationIds) {
 		if (originLocationId <= 0 || destinationLocationId <= 0) {
 			throw new IllegalArgumentException("A journey requires positive location IDs");
 		}
@@ -181,13 +188,22 @@ public class PassportService {
 			throw new IllegalArgumentException("Bus number must contain between 1 and 32 characters");
 		}
 		String normalizedRouteNumber = routeNumber == null ? null : routeNumber.trim().toUpperCase(Locale.ROOT);
+		if (visitedLocationIds != null && (visitedLocationIds.isEmpty() || visitedLocationIds.size() > 200
+				|| visitedLocationIds.stream().anyMatch(id -> id == null || id <= 0)
+				|| visitedLocationIds.getFirst() != originLocationId
+				|| visitedLocationIds.getLast() != destinationLocationId)) {
+			throw new IllegalArgumentException("Visited stops must be ordered from boarding to alighting, with 1 to 200 positive location IDs");
+		}
 		boolean alreadyRecorded = writeTransaction.execute(status -> {
 			lockUser(userId);
 			Passport passport = findOrCreatePassport(userId);
 			return passportJourneyRepository.findByPassport_PassportIdAndJourneyKey(passport.getPassportId(), journeyKey).isPresent();
 		});
 		if (alreadyRecorded) return;
-		Double distanceKilometers = findDistanceKilometers(originLocationId, destinationLocationId);
+		// Old queued completions contain only endpoints. Never invent their missing route.
+		Double distanceKilometers = visitedLocationIds == null
+				? findDistanceKilometers(originLocationId, destinationLocationId)
+				: findRouteDistanceKilometers(visitedLocationIds);
 		if (distanceKilometers == null) {
 			logger.warn(
 					"Could not estimate distance for completed journey {} from {} to {}; the bus number will still be recorded",
@@ -259,6 +275,45 @@ public class PassportService {
 	private Map<String, Object> findLocation(long locationId) {
 		return emberClient.findLocationById(locationId).orElse(null);
 	}
+
+	private Double findRouteDistanceKilometers(List<Long> locationIds) {
+		if (locationIds.size() == 1) return 0.0;
+		var coordinates = new java.util.HashMap<Long, Coordinates>();
+		var missing = new java.util.ArrayList<Long>();
+		// Resolve each location once, but preserve repeated visits when summing legs.
+		for (long id : locationIds.stream().distinct().toList()) {
+			var stamp = stampRepository.findByLocationId(id);
+			if (stamp.isPresent() && stamp.get().getLatitude() != null && stamp.get().getLongitude() != null) {
+				coordinates.put(id, new Coordinates(stamp.get().getLatitude(), stamp.get().getLongitude()));
+			} else missing.add(id);
+		}
+		try {
+			for (int index = 0; index < missing.size(); index += 50) {
+				var batch = missing.subList(index, Math.min(index + 50, missing.size()));
+				var locations = emberClient.findLocationsByIds(batch);
+				for (long id : batch) {
+					var location = locations.get(id);
+					if (location == null) return null;
+					Double latitude = getCoordinate(location, "lat");
+					Double longitude = getCoordinate(location, "lon");
+					if (latitude == null || longitude == null) return null;
+					coordinates.put(id, new Coordinates(latitude, longitude));
+				}
+			}
+		} catch (EmberApiException exception) {
+			logger.warn("Could not resolve journey stop coordinates from Ember: {}", exception.getMessage());
+			return null;
+		}
+		double total = 0;
+		for (int index = 1; index < locationIds.size(); index++) {
+			var from = coordinates.get(locationIds.get(index - 1));
+			var to = coordinates.get(locationIds.get(index));
+			total += GeoDistance.kilometers(from.latitude(), from.longitude(), to.latitude(), to.longitude());
+		}
+		return total;
+	}
+
+	private record Coordinates(double latitude, double longitude) {}
 
 	private Double findDistanceKilometers(long originLocationId, long destinationLocationId) {
 		var originStamp = stampRepository.findByLocationId(originLocationId);

@@ -10,6 +10,7 @@ function RouteNode({ stop, isNext }) {
                     {stop.arrivalTime && <time>{stop.arrivalTime}</time>}
                 </div>
                 {stop.location && <p>{stop.location}</p>}
+                <span className="route-node-status">{isNext ? 'Next stop' : stop.visited ? 'Reached' : 'Upcoming'}</span>
                 {typeof stop.stampCollected === 'boolean' && (
                     <span className="route-node-stamp">
                         {stop.stampCollected ? 'Stamp collected' : 'Stamp not collected'}

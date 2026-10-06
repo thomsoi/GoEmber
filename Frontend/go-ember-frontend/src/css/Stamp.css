@@ -6,9 +6,9 @@
 	min-width: 0;
 	box-sizing: border-box;
 	padding: 10px 6px;
-	border: 1px solid #e0e6df;
-	border-radius: 6px;
-	background: #fbfcf8;
+	border: 1px dashed #6c9272;
+	border-radius: 12px;
+	background: #f4f4df;
 	text-align: center;
 }
 
@@ -22,37 +22,28 @@
 .stamp-stop-name {
 	width: 100%;
 	margin: 0;
-	color: #183d37;
+	color: #183e2f;
 	font-size: 12px;
-	line-height: 1.2;
+	line-height: 1.45;
 	overflow-wrap: anywhere;
 }
 
 .stamp-collection-count,
 .stamp-last-collected {
-	color: #71847e;
-	font-size: 10px;
-	line-height: 1.2;
+	color: #456153;
+	font-size: 12px;
+	line-height: 1.45;
 }
 
 .stamp-rarity {
-	color: #287c6c;
-	font-size: 10px;
+	color: #286343;
+	font-size: 12px;
 	font-weight: 600;
 	line-height: 1.25;
 }
 
 @media (max-width: 360px) {
-	.passport-book {
-		grid-template-columns: 24px minmax(0, 1fr) 24px;
-		gap: 4px;
-	}
-
-	.passport-page-arrow {
-		width: 24px;
-	}
-
-	.stamp-seal {
+.stamp-seal {
 		width: 42px;
 		height: 52px;
 	}

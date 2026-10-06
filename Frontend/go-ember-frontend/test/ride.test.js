@@ -35,6 +35,7 @@ test('getting off immediately records only the boarding stop and a zero-distance
     const result = finishRide(begin());
     assert.equal(result.journey.routeNumber, 'E1');
     assert.equal(result.journey.originLocationId, result.journey.destinationLocationId);
+    assert.deepEqual(result.journey.visitedLocationIds, [2]);
     assert.deepEqual(result.stops.map(stop => stop.name), ['Origin']);
 });
 
@@ -95,6 +96,7 @@ test('a route that revisits the same location records each distinct stop event',
     const last = { ...first, currentStop: loop[2], nextStop: loop[3] };
     const result = finishRide(advanceRide(startRide(first, '', '', 'loop-ride'), last));
     assert.deepEqual(result.stops.map(stop => stop.locationId), [66, 1456, 66]);
+    assert.deepEqual(result.journey.visitedLocationIds, [66, 1456, 66]);
     assert.equal(new Set(result.stops.map(stop => stop.operationId)).size, 3);
     assert.equal(result.journey.routeNumber, 'E31');
     assert.equal(result.journey.originLocationId, result.journey.destinationLocationId);
@@ -108,6 +110,7 @@ test('early alighting awards only observed stops, towns and distance endpoints',
     assert.deepEqual(result.stops.map(stop => stop.name), ['Origin', 'Middle']);
     assert.equal(result.journey.routeNumber, 'E1');
     assert.equal(result.journey.destinationLocationId, 3);
+    assert.deepEqual(result.journey.visitedLocationIds, [2, 3]);
     assert.deepEqual(result.journey.towns, ['origin', 'middle']);
 });
 

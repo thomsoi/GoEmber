@@ -108,6 +108,7 @@ function Passport({
                                             ? <>{formatCount(distanceTravelledKm)} <span>km</span></>
                                             : 'Unavailable'}
                                     </dd>
+                                    <dd className="passport-distance-note"></dd>
                                 </div>
                             </dl>
                         </article>

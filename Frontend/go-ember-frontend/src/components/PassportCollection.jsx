@@ -1,6 +1,6 @@
 import Stamp from './Stamp';
 
-export const PASSPORT_PAGE_SIZE = 4;
+export const PASSPORT_PAGE_SIZE = 6;
 
 export default function PassportCollection({ section, stamps, cities, buses = [], page }) {
     const showingCities = section === 'cities';

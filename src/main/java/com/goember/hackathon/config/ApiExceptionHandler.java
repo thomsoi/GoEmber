@@ -1,13 +1,16 @@
 package com.goember.hackathon.config;
 
 import java.util.Map;
-import jakarta.persistence.EntityNotFoundException;
+
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
 import com.goember.hackathon.ember.EmberApiException;
+
+import jakarta.persistence.EntityNotFoundException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {

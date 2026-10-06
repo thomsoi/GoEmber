@@ -9,31 +9,37 @@
 }
 
 .route-node-marker {
-	display: block;
-	width: 18px;
-	height: 18px;
+	display: grid;
+	width: 28px;
+	height: 28px;
 	box-sizing: border-box;
-	margin: 7px;
-	border: 3px solid #8e9995;
+	margin: 3px 2px;
+	border: 3px solid #58735e;
 	border-radius: 50%;
-	background: #e3e7e5;
+	background: #fffdf5;
+	place-items: center;
 }
 
 .route-node.is-visited .route-node-marker {
-	border-color: #287c6c;
-	background: #287c6c;
+	border-color: #286343;
+	background: #286343;
 }
 
 .route-node.is-next .route-node-marker {
-	border-color: #c56e39;
-	background: #fff;
-	box-shadow: 0 0 0 4px rgba(197, 110, 57, 0.16);
+	border-color: #805422;
+	background: #f3d77a;
+	box-shadow: 0 0 0 4px #f3d77a60;
 }
 
 .route-node-details {
 	min-width: 0;
-	padding-bottom: 18px;
+	padding-bottom: 14px;
 	text-align: left;
+	padding: 10px 12px 14px;
+	margin: 0 0 16px;
+	border: 1px solid #c2d1b9;
+	border-radius: 14px;
+	background: #f0f5e9;
 }
 
 .route-node-heading {
@@ -41,35 +47,41 @@
 	align-items: baseline;
 	justify-content: space-between;
 	gap: 8px;
+	flex-wrap: wrap;
 }
 
 .route-node-heading h2 {
 	min-width: 0;
 	margin: 0;
-	color: #183d37;
+	color: #183e2f;
 	font-size: 16px;
 	overflow-wrap: anywhere;
 }
 
 .route-node-heading time {
 	flex: 0 0 auto;
-	color: #526b64;
+	color: #456153;
 	font-size: 13px;
 	font-variant-numeric: tabular-nums;
 }
 
 .route-node-details p {
 	margin: 3px 0 5px;
-	color: #71847e;
+	color: #456153;
 	font-size: 12px;
 }
 
 .route-node-stamp {
-	color: #287c6c;
-	font-size: 11px;
+	color: #286343;
+	font-size: 12px;
 	font-weight: 600;
 }
 
 .route-node:not(.is-visited) .route-node-stamp {
-	color: #71847e;
+	color: #456153;
 }
+
+.route-node.is-visited .route-node-marker::after { content: ""; width: 9px; height: 5px; border: solid #fffdf5; border-width: 0 0 2px 2px; transform: rotate(-45deg) translateY(-1px); }
+.route-node.is-next .route-node-details { background: #fff4c9; border-color: #a67b38; }
+.route-node-status { display: inline-block; color: #345541; font-size: 12px; font-weight: 700; }
+.route-node-stamp { display: block; }

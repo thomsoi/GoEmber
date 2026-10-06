@@ -1,19 +1,23 @@
 .live-bus-tracker {
 	display: grid;
-	gap: 10px;
+	gap: 14px;
 	width: 100%;
-	padding-bottom: 20px;
-	border-bottom: 1px solid #d9e6df;
+	padding-bottom: 24px;
+	border-bottom: 0;
+	padding: 24px 20px;
+	border: 2px solid #aec6ae;
+	border-radius: 24px;
+	background: #eaf4e4;
 }
 
 .live-bus-heading h2 {
 	margin: 0;
-	color: #174d46;
+	color: #234b3c;
 	text-align: center;
 }
 
 .live-bus-select-label {
-	color: #526b64;
+	color: #456153;
 	font-size: 13px;
 	font-weight: 600;
 	text-align: left;
@@ -23,14 +27,14 @@
 	width: 100%;
 	min-height: 46px;
 	box-sizing: border-box;
-	border: 1px solid #b9cec5;
-	border-radius: 6px;
+	border: 2px solid #6c9272;
+	border-radius: 12px;
 	padding: 0 12px;
-	background: #fff;
-	color: #183d37;
+	background: #fffdf5;
+	color: #183e2f;
 	color-scheme: light;
 	font: inherit;
-	font-size: 14px;
+	font-size: 16px;
 }
 
 .live-bus-select:focus-visible {
@@ -41,25 +45,26 @@
 .live-bus-track-button {
 	width: 100%;
 	min-height: 46px;
-	border: 0;
-	border-radius: 8px;
+	border: 2px solid #163c2d;
+	border-radius: 18px;
 	padding: 0 14px;
-	background: #174d46;
-	color: #fff;
+	background: #234b3c;
+	color: #fffdf5;
 	font: inherit;
 	font-size: 14px;
 	font-weight: 700;
 	cursor: pointer;
+	box-shadow: 0 3px 0 #b3c8a5;
 }
 
 .live-bus-add-stamps-button {
 	width: 100%;
 	min-height: 46px;
-	border: 1px solid #174d46;
-	border-radius: 8px;
+	border: 2px solid #234b3c;
+	border-radius: 18px;
 	padding: 0 14px;
-	background: #fff;
-	color: #174d46;
+	background: #fffdf5;
+	color: #234b3c;
 	font: inherit;
 	font-size: 14px;
 	font-weight: 700;
@@ -83,7 +88,7 @@
 
 .live-bus-stops,
 .live-bus-feedback {
-	color: #526b64;
+	color: #456153;
 	font-size: 13px;
 	line-height: 1.4;
 	text-align: center;
@@ -91,9 +96,13 @@
 }
 
 .live-bus-feedback.is-success {
-	color: #287c6c;
+	color: #286343;
 }
 
 .live-bus-feedback.is-error {
-	color: #a64035;
+	color: #96392c;
 }
+
+.live-bus-track-button:hover:not(:disabled) { background: #326747; }
+.live-bus-add-stamps-button:hover:not(:disabled) { background: #f3edc2; }
+.live-bus-feedback.is-error { padding: 10px; border: 1px solid #b3765c; border-radius: 10px; background: #fff4ee; }

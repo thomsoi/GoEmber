@@ -96,10 +96,11 @@ test('completed ride sends its bus number and boarding and alighting stop IDs', 
     };
     await recordCompletedJourney(1, { journeyKey: 'ride-1', routeNumber: 'E31',
         originLocationId: 66, destinationLocationId: 1456,
-        originName: 'Boarding', destinationName: 'Alighting', towns: ['Glasgow'] });
+        originName: 'Boarding', destinationName: 'Alighting', towns: ['Glasgow'], visitedLocationIds: [66, 100, 1456] });
     assert.equal(sent.routeNumber, 'E31');
     assert.equal(sent.originLocationId, 66);
     assert.equal(sent.destinationLocationId, 1456);
+    assert.deepEqual(sent.visitedLocationIds, [66, 100, 1456]);
 });
 
 test('invalid bus response shapes are rejected before reaching components', async () => {

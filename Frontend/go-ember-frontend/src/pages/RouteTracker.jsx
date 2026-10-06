@@ -23,6 +23,8 @@ function RouteTracker() {
         setTracker(next);
     }, []);
     const routeRequest = tracker.routeRequest;
+    const showLiveBuses = Boolean(routeRequest || tracker.ride
+        || tracker.stops.length > 0 || tracker.journeys.length > 0);
     const displayedBus = selectedBus?.routeDetailsLoaded ? selectedBus : tracker.ride
         ? { vehicleId: tracker.ride.vehicleId, tripUid: tracker.ride.tripUid,
             route: tracker.ride.route, routeNumber: selectedBus?.routeNumber,
@@ -64,7 +66,7 @@ function RouteTracker() {
             ) : (
                 <JourneyInfoRq onStartJourney={changeRoute} disabled={Boolean(tracker.ride) || busy} />
             )}
-            <LiveBusTracker
+            {showLiveBuses && <LiveBusTracker
                 key={`${routeRequest?.startLocation ?? ''}-${routeRequest?.endLocation ?? ''}`}
                 origin={routeRequest?.startLocation ?? ''}
                 destination={routeRequest?.endLocation ?? ''}
@@ -72,7 +74,7 @@ function RouteTracker() {
                 updateTracker={updateTracker}
                 onBusyChange={setBusy}
                 onSelectedBusChange={setSelectedBus}
-            />
+            />}
             {displayedBus?.route?.length > 0 && (
                 <DisplayRoute
                     startLocation={routeRequest?.startLocation || displayedBus.departureStop?.name || displayedBus.route[0].name}

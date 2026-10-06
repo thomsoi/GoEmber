@@ -55,7 +55,8 @@ public class PassportController {
 				request.destinationLocationId(),
 				request.originName(),
 				request.destinationName(),
-				request.towns());
+				request.towns(),
+				request.visitedLocationIds());
 	}
 
 	@PostMapping("/{userId}/locations/{emberLocationId}/visits")
@@ -185,6 +186,7 @@ public class PassportController {
 			@NotNull @Positive Long destinationLocationId,
 			@NotBlank @Size(max = 255) String originName,
 			@NotBlank @Size(max = 255) String destinationName,
-			@NotNull @Size(max = 200) List<@NotBlank @Size(max = 100) String> towns) {
+			@NotNull @Size(max = 200) List<@NotBlank @Size(max = 100) String> towns,
+			@Size(min = 1, max = 200) List<@NotNull @Positive Long> visitedLocationIds) {
 	}
 }

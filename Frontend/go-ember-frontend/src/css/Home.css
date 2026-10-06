@@ -2,12 +2,12 @@
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	gap: 24px;
-	width: min(100%, 430px);
-	min-height: 100svh;
+	gap: 28px;
+	width: min(100%, 580px);
+	min-height: auto;
 	box-sizing: border-box;
 	margin: 0 auto;
-	padding: 28px 20px;
+	padding: 32px 16px 24px;
 	text-align: center;
 }
 
@@ -17,7 +17,7 @@
 
 .passport-data-state,
 .passport-data-error {
-	color: #526b64;
+	color: #456153;
 	font-size: 14px;
 }
 
@@ -27,17 +27,17 @@
 	gap: 12px;
 	padding: 18px 14px;
 	border: 1px solid #dfb6aa;
-	border-radius: 8px;
+	border-radius: 18px;
 	background: #fff8f5;
 }
 
 .passport-data-error button {
 	min-height: 40px;
 	border: 0;
-	border-radius: 6px;
+	border-radius: 12px;
 	padding: 0 14px;
-	background: #174d46;
-	color: #fff;
+	background: #234b3c;
+	color: #fffdf5;
 	font: inherit;
 	cursor: pointer;
 }

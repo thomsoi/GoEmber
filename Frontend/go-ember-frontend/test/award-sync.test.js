@@ -28,12 +28,16 @@ function queue(stopCount = 1) {
 test('partial batch failure retains unacknowledged stops and retries their original operation IDs', async () => {
     const state = queue(51);
     const batches = [];
+    const collected = [];
+    const onCollected = stamps => collected.push(...stamps.map(stamp => stamp.operationId));
     globalThis.fetch = async (_url, options) => {
         batches.push(JSON.parse(options.body));
         if (batches.length === 2) throw new Error('offline');
         return new Response(null, { status: 200 });
     };
-    await assert.rejects(syncPendingAwards(1, state.current, state.update), /offline/);
+    await assert.rejects(syncPendingAwards(1, state.current, state.update, onCollected), /offline/);
+    assert.equal(collected.length, 50);
+    assert.equal(collected.includes('ride:stop:50'), false);
     assert.equal(batches[0].visits.length, 50);
     assert.deepEqual(state.current.stops.map(stop => stop.operationId), ['ride:stop:50']);
     assert.equal(state.current.journeys.length, 1);
@@ -43,7 +47,9 @@ test('partial batch failure retains unacknowledged stops and retries their origi
         retries.push(JSON.parse(options.body));
         return new Response(null, { status: 200 });
     };
-    await syncPendingAwards(1, state.current, state.update);
+    await syncPendingAwards(1, state.current, state.update, onCollected);
+    assert.equal(collected.length, 51);
+    assert.equal(new Set(collected).size, 51);
     assert.deepEqual(retries[0], batches[1]);
     assert.deepEqual(state.current.stops, []);
     assert.deepEqual(state.current.journeys, []);
@@ -77,13 +83,15 @@ test('town failure resumes after the saved completion and keeps the original tow
 test('local checkpoint failure keeps the queue and stops further server writes', async () => {
     const state = queue();
     let writes = 0;
+    const notifications = [];
     globalThis.fetch = async () => {
         writes++;
         return new Response(null, { status: 200 });
     };
     await assert.rejects(syncPendingAwards(1, state.current, () => {
         throw new Error('storage full');
-    }), /storage full/);
+    }, stamps => notifications.push(stamps)), /storage full/);
+    assert.deepEqual(notifications, []);
     assert.equal(writes, 1);
     assert.equal(state.current.stops.length, 1);
     assert.equal(state.current.journeys.length, 1);
